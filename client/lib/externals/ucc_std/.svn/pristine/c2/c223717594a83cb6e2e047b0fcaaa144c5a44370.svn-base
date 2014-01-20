@@ -1,0 +1,140 @@
+package ucc.operation.generic  {
+	import ucc.data.event.FrameImpulse;
+	import ucc.operation.Operation;
+	import ucc.operation.OperationEvent;
+	import ucc.operation.OperationGroup;
+	import ucc.operation.OperationState;
+	import flash.events.Event;
+	import flash.utils.getTimer;
+	
+/**
+ * Concurent operation group. Executes child operations at the same time
+ *
+ * @version $Id$
+ */
+public class ConcurentOperationGroup extends AbstractOperationGroup {
+	
+	/** Total progress sum */
+	protected var totalProgressSum		: Number = 0;	
+	
+	/** Current progress sum */
+	protected var currentProgressSum 	: Number = 0;
+	
+	/** Incomplete operations num */
+	protected var incompleteOperationsNum	: int;
+	
+	/**
+	 * Class constructor
+	 */
+	public function ConcurentOperationGroup () {
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	override public function start() : void  {
+		
+		// add listenners first
+		for ( var i : int = 0; i < this.operations.length; i++ ) {
+			this.totalProgressSum += ( this.progressWeights[i] as Number );
+			this.incompleteOperationsNum++;
+			Operation( this.operations[i] ).addEventListener( OperationEvent.COMPLETE, this.onChildOperationComplete );
+			Operation( this.operations[i] ).addEventListener( OperationEvent.FAIL, this.onChildOperationFail );
+		}
+		
+		FrameImpulse.getInstance().addEventListener( Event.ENTER_FRAME, this.onEnterFrame );
+		
+		this.setState( OperationState.RUNNING );
+		
+		// then start all
+		for ( i  = 0; i < this.operations.length; i++ ) {
+			Operation( this.operations[i] ).start();
+		}
+		
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	override public function stop() : void  {
+		this.setState( OperationState.STOPPED );
+		for ( var i : int = 0; i < this.operations.length; i++ ) {
+			if ( Operation( this.operations[i] ).getState() != OperationState.COMPLETED ) {
+				Operation( this.operations[i] ).stop();
+			}
+		}
+		
+		FrameImpulse.getInstance().removeEventListener( Event.ENTER_FRAME, this.onEnterFrame );
+		
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	override public function pause() : void  {
+		this.setState( OperationState.PAUSED );
+		for ( var i : int = 0; i < this.operations.length; i++ ) {
+			if ( Operation( this.operations[i] ).getState() != OperationState.COMPLETED ) {
+				Operation( this.operations[i] ).pause();
+			}
+		}
+		FrameImpulse.getInstance().removeEventListener( Event.ENTER_FRAME, this.onEnterFrame );
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	override public function resume() : void  {
+		this.setState( OperationState.RUNNING );
+		for ( var i : int = 0; i < this.operations.length; i++ ) {
+			if ( Operation( this.operations[i] ).getState() == OperationState.PAUSED ) {
+				Operation( this.operations[i] ).resume();
+			}
+		}
+		FrameImpulse.getInstance().addEventListener( Event.ENTER_FRAME, this.onEnterFrame );
+	}
+	
+	/**
+	 * On enter frame
+	 */
+	protected function onEnterFrame ( event : Event ) : void {
+		
+		var newProgressSum : Number = 0;
+		
+		for ( var i : int = 0; i < this.operations.length; i++ ) {
+			newProgressSum += Operation( this.operations[i] ).getProgress() * Number( this.progressWeights[i] );
+		}
+		
+		this.setProgress( newProgressSum / this.totalProgressSum );
+		
+		if ( this.incompleteOperationsNum <= 0 ) {
+			FrameImpulse.getInstance().removeEventListener( Event.ENTER_FRAME, this.onEnterFrame );
+			this.setState( OperationState.COMPLETED );
+		}
+		
+	}
+	
+	/**
+	 * On child operation complete
+	 */
+	protected function onChildOperationComplete ( event : OperationEvent ) : void {
+		
+		this.incompleteOperationsNum--;
+		Operation( event.target ).removeEventListener( OperationEvent.COMPLETE, this.onChildOperationComplete );
+		Operation( event.target ).removeEventListener( OperationEvent.FAIL, this.onChildOperationFail );
+		
+	}
+	
+	/**
+	 * On child operation fail
+	 */
+	protected function onChildOperationFail ( event : OperationEvent ) : void {
+		Operation( event.target ).removeEventListener( OperationEvent.FAIL, this.onChildOperationFail );
+		this.setState( OperationState.FAILED );
+	}
+	
+	
+	
+}
+	
+}

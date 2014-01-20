@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Extension>
+    <Name>DmExt</Name>
+    <ManagedObjects>
+        <ManagedObject>
+            <Handle>ManagedConnectionPool</Handle>
+            <Type>Java</Type>
+            <Path>com.electrotank.electroserver5.examples.database.ConnectionPool</Path>
+            <Variables>
+            	<!-- drivers is a comma separated list of JDBC drivers -->
+                <Variable name="drivers" type="string">com.mysql.jdbc.Driver</Variable>
+                <Variable name="logfile" type="string">dbpool.log</Variable>
+				
+				<!-- Create an array of EsObjects.  One object represents a connection pool. -->
+                <Variable name="pools" type="EsObject">
+                    <Entry>
+                        <Variable name="poolname" type="string">mysqlpool</Variable>
+                        <Variable name="url" type="string">jdbc:mysql://localhost:3306/dm</Variable>
+                        <Variable name="user" type="string">root</Variable>
+                        <Variable name="password" type="string">DaBu320</Variable>
+                        <Variable name="timeout" type="integer">2000</Variable>
+                        <Variable name="maxpool" type="integer">20</Variable>
+						<Variable name="maxconn" type="integer">98</Variable>
+						<Variable name="expiry" type="integer">5</Variable>
+                    </Entry>                   
+                </Variable>
+            </Variables>
+        </ManagedObject>
+    </ManagedObjects>
+    <Plugins>
+        <Plugin>
+            <Handle>DatabaseJDBCPlugin</Handle>
+            <Type>Java</Type>
+            <Path>com.electrotank.electroserver5.examples.database.DatabaseJDBCPlugin</Path>
+            <Variables>
+                 <Variable name="poolname" type="string">mysqlpool</Variable>
+            </Variables>
+        </Plugin>
+        <Plugin>
+            <Handle>DmExt</Handle>
+            <Type>Java</Type>
+            <Path>dmext.DmExt</Path>
+        </Plugin>
+    </Plugins>
+
+	<EventHandlers>
+       <RoomTrackingHandlers>
+            <RoomTrackingHandler>
+            <Handle>RoomEventHandler</Handle>
+            <Type>Java</Type>
+            <Path>dmext.RoomEventHandler</Path>
+            </RoomTrackingHandler>
+        </RoomTrackingHandlers>
+    </EventHandlers>
+
+</Extension>

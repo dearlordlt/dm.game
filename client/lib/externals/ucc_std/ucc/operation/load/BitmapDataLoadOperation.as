@@ -1,0 +1,85 @@
+package ucc.operation.load  {
+	import ucc.logging.Logger;
+	import ucc.operation.OperationState;
+	import flash.display.Bitmap;
+	import flash.display.BitmapData;
+	import flash.display.Loader;
+	import flash.display.LoaderInfo;
+	import flash.events.Event;
+	import flash.events.IOErrorEvent;
+	import flash.net.URLLoaderDataFormat;
+	import flash.utils.ByteArray;
+	import flash.utils.Dictionary;
+	
+/**
+ * Bitmap data load operation
+ *
+ * @version $Id: BitmapDataLoadOperation.as 1 2013-01-03 11:14:03Z rytis.alekna $
+ */
+public class BitmapDataLoadOperation extends UrlLoadOperation {
+	
+	/** Bitmap data */
+	protected var bitmapData		: BitmapData;
+	protected var doLoader : Loader;
+	
+	/**
+	 * Constructor
+	 * @param	url		url of bitmap to load
+	 */
+	public function BitmapDataLoadOperation ( url : * ) {
+		super( url, URLLoaderDataFormat.BINARY );
+	}
+	
+	/**
+	 * Get bitmap data
+	 * @return
+	 */
+	public function getBitmapData () : BitmapData {
+		return this.bitmapData.clone();
+	}
+	
+	/**
+	 * Process data
+	 */
+	override protected function processData() : void {
+		
+		doLoader = new Loader();
+		
+		doLoader.contentLoaderInfo.addEventListener( Event.INIT, this.onContentLoaderInfoInit );
+		doLoader.contentLoaderInfo.addEventListener( IOErrorEvent.IO_ERROR, this.onContentLoaderInfoIoError );
+		
+		doLoader.loadBytes( this.data as ByteArray );
+		
+	}
+	
+	/**
+	 * On Io error
+	 * @param	event
+	 */
+	protected function onContentLoaderInfoIoError ( event : IOErrorEvent ) : void {
+		Logger.log( "IoError has ocoured! " + event.toString(), Logger.LEVEL_FATAL );
+		this.setState( OperationState.FAILED );
+	}
+	
+	/**
+	 * On loader info init
+	 * 
+	 * @param	event
+	 */
+	protected function onContentLoaderInfoInit( event : Event ) : void {
+		this.bitmapData = ( this.doLoader.contentLoaderInfo.content as Bitmap ).bitmapData;
+		this.setProgress( 1 );
+		this.setState( OperationState.COMPLETED );
+	}
+	
+	/**
+	 * Stringified representation of object
+	 * @return
+	 */
+	override public function toString () : String {
+		return "[object BitmapDataLoadOperation] url: " + this.getUrl().url + " ]";
+	}
+	
+}
+	
+}

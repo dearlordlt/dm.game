@@ -1,0 +1,133 @@
+package ucc.cache  {
+	import ucc.logging.Logger;
+	import flash.display.BitmapData;
+	import flash.geom.Matrix;
+	import flash.utils.Dictionary;
+	
+/**
+ * Bitmap data cache. When retrieving data from it allways returns a clone and not an original instance
+ *
+ * @version $Id: BitmapDataCache.as 1 2013-01-03 11:14:03Z rytis.alekna $
+ */
+public class BitmapDataCache extends SimpleCache {
+	
+	/** Named storage instances */
+	private static const storages : SimpleCache = new SimpleCache();
+	
+	/**
+	 * Cleans up all caches
+	 */
+	public static function clearAllCaches () : void {
+		for (var cacheId : String in BitmapDataCache.storages ) {
+			BitmapDataCache( BitmapDataCache.storages[ cacheId ] ).clear();
+			delete BitmapDataCache.storages[ cacheId ];
+		}
+	}
+	
+	/**
+	 * Get instance of cache
+	 * @param	cacheId
+	 * @return
+	 */
+	public static function getInstance( cacheId	: String ) : BitmapDataCache {
+		return new BitmapDataCache( cacheId );
+	}
+	
+	/**
+	 * Cahche with specified id exist?
+	 * @return
+	 */
+	public static function cacheExist( cacheId ) : Boolean {
+		return ( BitmapDataCache.storages.retrieveObjectByKey( cacheId ) != null );
+	}
+	
+	/**
+	 * Constructor
+	 * @param	cacheId	(optional) if storage id is provided, same BitmapDataCache instance can be recreated in diferent scopes
+	 */
+	public function BitmapDataCache ( cacheId : String = null ) {
+		if ( cacheId ) {
+			var bitmapDataCache : BitmapDataCache;
+			bitmapDataCache = BitmapDataCache.storages.retrieveObjectByKey( cacheId );
+			if ( bitmapDataCache ) {
+				this.storage = bitmapDataCache.storage;
+			} else {
+				this.storage = new Dictionary();
+				BitmapDataCache.storages.storeObject( this, cacheId );
+			}
+		}
+	}
+	
+	/**
+	 * Get bitmap data by key. If width and/or height is specified, a resized BitmapData instance is returned. 
+	 * If only one param of width and height is specified, then unspecified param is defined proportionaly
+	 * @param	key
+	 * @param	width
+	 * @param	height
+	 * @param	proportional	if specified image will be fitted to width and height without distortion
+	 * @return	Bitmap data. If width and/or height is specified, a resized BitmapData instance is returned
+	 */
+	public function getBitmapDataByKey ( key : * , width : Number = NaN, height : Number = NaN, proportional : Boolean = false ) : BitmapData {
+		
+		var retVal		: BitmapData;
+		var original 	: BitmapData = super.retrieveObjectByKey( key );
+		
+		if ( original ) {
+			
+			// resize BitmapData
+			if ( width || height ) {
+				var matrix	: Matrix = new Matrix();
+				var xScale	: Number;
+				var yScale	: Number;
+				
+				if ( width && height ) {
+					
+					// if proportional scaling
+					if ( proportional ) {
+						
+						var maxScale : Number = Math.max( ( width / original.width ), ( height / original.height ) );
+						
+						xScale = maxScale;
+						yScale = maxScale;
+						
+					// with distortion
+					} else {
+						xScale = width / original.width;
+						yScale = height / original.height;
+					}
+				} else if ( width && !height ) {
+					xScale = yScale = width / original.width;
+					height = yScale * original.height;
+				} else if ( !width && height ) {
+					xScale = yScale = height / original.height;
+					width = xScale * original.width;
+				}
+				
+				matrix.scale( xScale, yScale );
+				
+				retVal = new BitmapData( width, height, true, 0x000000 );
+				retVal.draw( original, matrix, null, null, null, true );
+				return retVal;
+			
+			// return original size
+			} else {
+				return original.clone();
+			}
+			
+		} else {
+			Logger.log( "com.flintgames.cache.BitmapDataCache.getBitmapDataByKey() : BitmapData with a key [ " + key + " ] not found in cache!", Logger.LEVEL_WARN );
+			return undefined;
+		}
+		
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	override public function retrieveObjectByKey(key:*) : *  {
+		return BitmapData( super.retrieveObjectByKey(key) ).clone();
+	}
+	
+}
+	
+}

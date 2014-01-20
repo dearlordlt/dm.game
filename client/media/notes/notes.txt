@@ -1,0 +1,243 @@
+arytis (103 )- 
+
+arytis1 (238)
+arytis2 (3581)
+arytis3 (3582)
+arytis4 (3583)
+arytis5 (3584)
+
+
+rytis666_1 	: avatarId: 4693
+arytis666	: userId: 10279
+
+Tags manager
+
+- actions
+- quests
+
+TypeError: Error #1010: A term is undefined and has no properties.
+	at dm.game.managers::EntityManager/removeEntity()[C:\Users\R\Job\UCC\ucc_darnus_miestas\trunk\client\src\dm\game\managers\EntityManager.as:84]
+	at dm.game.managers::UserManager/onUserUpdate()[C:\Users\R\Job\UCC\ucc_darnus_miestas\trunk\client\src\dm\game\managers\UserManager.as:110]
+	at net.richardlord.ash.signals::Signal1/dispatch()[C:\Users\R\Job\UCC\ucc_darnus_miestas\trunk\client\src\net\richardlord\ash\signals\Signal1.as:25]
+	at dm.game.managers::EsManager/onUserUpdate()[C:\Users\R\Job\UCC\ucc_darnus_miestas\trunk\client\src\dm\game\managers\EsManager.as:100]
+	at flash.events::EventDispatcher/dispatchEventFunction()
+	at flash.events::EventDispatcher/dispatchEvent()
+	at com.electrotank.electroserver5.connection::ESEngine/processMessage()[/Users/jason/Projects/Electrotank/ES/client/as3/src/core/com/electrotank/electroserver5/connection/ESEngine.as:1085]
+	at com.electrotank.electroserver5.connection::ESEngine/checkMessageOrder()[/Users/jason/Projects/Electrotank/ES/client/as3/src/core/com/electrotank/electroserver5/connection/ESEngine.as:1024]
+	at com.electrotank.electroserver5.connection::ESEngine/onDataReceived()[/Users/jason/Projects/Electrotank/ES/client/as3/src/core/com/electrotank/electroserver5/connection/ESEngine.as:997]
+	at flash.events::EventDispatcher/dispatchEventFunction()
+	at flash.events::EventDispatcher/dispatchEvent()
+	at com.electrotank.electroserver5.connection::SocketConnection/readData()[/Users/jason/Projects/Electrotank/ES/client/as3/src/core/com/electrotank/electroserver5/connection/SocketConnection.as:186]
+	at com.electrotank.electroserver5.connection::SocketConnection/readData()[/Users/jason/Projects/Electrotank/ES/client/as3/src/core/com/electrotank/electroserver5/connection/SocketConnection.as:189]
+	at com.electrotank.electroserver5.connection::SocketConnection/readData()[/Users/jason/Projects/Electrotank/ES/client/as3/src/core/com/electrotank/electroserver5/connection/SocketConnection.as:189]
+	at com.electrotank.electroserver5.connection::SocketConnection/readData()[/Users/jason/Projects/Electrotank/ES/client/as3/src/core/com/electrotank/electroserver5/connection/SocketConnection.as:189]
+	at com.electrotank.electroserver5.connection::SocketConnection/onSocketData()[/Users/jason/Projects/Electrotank/ES/client/as3/src/core/com/electrotank/electroserver5/connection/SocketConnection.as:140]
+
+
+
+- Global message:
+	var pr:PluginRequest = new PluginRequest();
+	pr.parameters = new EsObject();
+	pr.pluginName = "DmExt";
+	pr.parameters.setString("action", "sendGlobalMessage");
+	pr.parameters.setString("message", "TAVO MESSAGE");
+	EsManager.instance.es.engine.send(pr);	
+
+	
+- Day jobs
+	+ Puciko ikonos
+	- Global progress bar ()
+	- Tooltip
+	- Avatar profile
+	- Load map
+
+
+- Notifications
+	- Create function
+
+
+- DEd
+	- Confirm dialog
+	
+
+
+- profile
+	+ edit avatar description
+	+ remove unneeded tabs
+	+ upload avatar image
+	+ finish professions tab
+	+ no intro 
+	- audio settings (volume)
+	+- translations
+
+	
+	
+select function_id from 
+   functions_to_phrases left join functions on functions.id=functions_to_phrases.function_id 
+where functions.id is null	
+
+select condition_id from 
+   conditions_to_phrases left join conditions on conditions.id=conditions_to_phrases.condition_id 
+where conditions.id is null	
+	
+
+
+select phrase_id from 
+   functions_to_phrases left join dialog_phrases on dialog_phrases.id=functions_to_phrases.phrase_id 
+where dialog_phrases.id is null	
+
+
+
+- items
+	- items not showing up (http://vds000004.hosto.lt/dm/?room=nerodo_itemu_trini)
+	
+	
+- Jointai
+
+714
+
+C:\Users\R\Job\UCC\ucc_darnus_miestas\trunk\client\src\dm\builder\interfaces\tools\ItemEditor.as, Line 129	1061: Call to a possibly undefined method hideHeader through a reference with static type dm.builder.interfaces:FunctionsAndConditions.
+
+- List'e 
+TypeError: Error #1009: Cannot access a property or method of a null object reference.
+	at fl.controls::SelectableList/handleCellRendererMouseEvent()
+	
+- Nuspalvoti kitaip root element'ą
+- auto commit'as teksto į frazę
+
+- Add phrase
+- Delete phrase
+
+- Functions and conditions windows
+	- Delete
+	- Data finder
+
+- Tree connector
+	- draw mode
+	- delete mode
+	- display of connections from functions
+
+- Node deletetion
+
+- Zoom improvements
+	- scroll pane update
+	- F/C ikonos
+	- Tooltips
+	- Navigator
+
+- Joints
+	- Select
+	- Priority
+
+- balsasvimas 
+- root node
+- nodes chain colors
+- Builder permisions
+	
+KAMBARIAI:
+	
+	// private var _roomToJoin 		: String = "foje";
+	// private var _roomToJoin 		: String = "bug_02/04";
+	// private var _roomToJoin 		: String = "mapo_bugas1";
+	// private var _roomToJoin 		: String = "puciko_testai";
+	// private var _roomToJoin 		: String = "sostine";
+	// private var _roomToJoin : String = "maziausias_8/8/12";
+	// private var _roomToJoin 		: String = "LootTest";
+	//private var _roomToJoin 		: String = "naujas-trinti";
+	// // "patyciu";
+	
+	
+-- find non existing phrases
+SELECT phrase_id FROM functions_to_phrases WHERE phrase_id NOT IN 
+	(SELECT id FROM dialog_phrases)
+	
+
+Permissions
+
+G - global
+M - loaded map
+E - entity?
+
+Map:
+	new map - G
+	load map - G
+	save map - M
+	save map as - M
+	Properties - M
+	Room manager - G
+	Try map - M
+	Add spawn point - M
+	
+Entity:
+	Create entity - G
+	Entity presets
+	Select entity
+	Properties
+	
+Tools:
+	Custom building editor
+	Character builder
+	Solid object editor
+	Texture manager
+	Object uploader
+	NPC editor
+	Interaction editor
+	Item editor
+	Audio editor
+	Dialog editor
+	Loot editor
+	
+	
+// užklausa sudėti spawnpointus pagal userio mokyklą visiems jo avatarams.
+	
+INSERT IGNORE INTO avatar_last_location (avatar_id, room_id, x, y, z) 
+SELECT avatars.id, schools.room_id, map_avatar_spawnpoints.x, map_avatar_spawnpoints.y, map_avatar_spawnpoints.z
+FROM avatars
+LEFT JOIN users ON (users.id = avatars.user_id)	
+LEFT JOIN schools ON ( schools.id = users.school_id )
+LEFT JOIN rooms ON ( rooms.id = schools.room_id )
+LEFT JOIN map_avatar_spawnpoints ON ( rooms.map_id = map_avatar_spawnpoints.map_id );
+
+
+
+
+
+
+INSERT IGNORE INTO avatar_last_location (avatar_id, room_id, x, y, z) 
+SELECT avatars.id, schools.room_id, map_avatar_spawnpoints.x, map_avatar_spawnpoints.y, map_avatar_spawnpoints.z
+FROM avatars
+LEFT JOIN users ON (users.id = avatars.user_id)	
+LEFT JOIN schools ON ( schools.id = users.school_id )
+LEFT JOIN rooms ON ( rooms.id = schools.room_id )
+LEFT JOIN map_avatar_spawnpoints ON ( rooms.map_id = map_avatar_spawnpoints.map_id );
+
+INSERT IGNORE INTO avatar_vars ( label, avatar_id, value )
+SELECT schools.var_label, avatars.id, 1
+FROM avatars
+LEFT JOIN users ON ( users.id = avatars.id )
+LEFT JOIN schools ON ( users.school_id = schools.id )
+
+
+
+
+
+SELECT 
+		( 
+			( SELECT value FROM avatar_vars WHERE label = :varName AND avatar_id = :avatarId ) 
+			>= 
+			( SELECT MAX(value) FROM avatar_vars WHERE label IN ( :otherVars ) AND avatar_id = :avatarId )
+		)
+
+
+SELECT 
+		( 
+			( SELECT value FROM avatar_vars WHERE label = 'technologijos.progress' AND avatar_id = 238 ) 
+			>= 
+			( SELECT MAX(value) FROM avatar_vars WHERE label IN ( 'a.daile.progress,a.ekologija.progress,a.muzika.progress' ) AND avatar_id = 238 )
+		)
+
+
+SELECT 
+			( SELECT value FROM avatar_vars WHERE label = 'technologijos.progress' AND avatar_id = 238 ) 
+			,
+			( SELECT MAX(value) FROM avatar_vars WHERE label IN ( 'a.daile.progress,a.ekologija.progress,a.muzika.progress' ) AND avatar_id = 238 )

@@ -1,0 +1,152 @@
+package ucc.operation.load  {
+	import ucc.logging.Logger;
+	import ucc.operation.AbstractOperation;
+	import ucc.operation.OperationState;
+	import ucc.util.MathUtil;
+	import ucc.util.StringUtil;
+	import flash.events.ErrorEvent;
+	import flash.events.Event;
+	import flash.events.IOErrorEvent;
+	import flash.events.ProgressEvent;
+	import flash.events.SecurityErrorEvent;
+	import flash.net.URLLoader;
+	import flash.net.URLLoaderDataFormat;
+	import flash.net.URLRequest;
+	
+/**
+ * Ulr load operation
+ *
+ * @version $Id: UrlLoadOperation.as 1 2013-01-03 11:14:03Z rytis.alekna $
+ */
+public class UrlLoadOperation extends AbstractOperation {
+	
+	/** Loader */
+	protected var loader	: URLLoader;
+	
+	/** URL request */
+	protected var url		: URLRequest;
+	
+	/** Raw data */
+	protected var data		: * ;
+	
+	/**
+	 * Constructor
+	 * @param	url	URL of data to load
+	 * @param	format	Farmat of data to be received
+	 */
+	public function UrlLoadOperation ( url : * = null, format : String = URLLoaderDataFormat.TEXT ) {
+		
+		if ( url ) {
+			this.setUrl( url );
+		}
+		
+		/// Set up loader
+		this.loader = new URLLoader();
+		this.loader.dataFormat = format;
+		
+		this.loader.addEventListener(Event.COMPLETE, this.onLoaderComplete );
+		this.loader.addEventListener(ProgressEvent.PROGRESS, this.onLoaderProgress );
+		this.loader.addEventListener(IOErrorEvent.IO_ERROR, this.onLoaderError );
+		this.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this.onLoaderError );		
+		
+		
+	}
+	
+	/**
+	 * On loader event
+	 * @param	event
+	 */
+	protected function onLoaderError( event : ErrorEvent ):void {
+		Logger.log( "ucc.operation.load.UrlLoadOperation.onLoaderError() : " + event.toString(), Logger.LEVEL_ERROR );
+		this.setState( OperationState.FAILED );
+	}
+	
+	/**
+	 * On loader progress
+	 */
+	protected function onLoaderProgress( event : ProgressEvent ):void {
+		if ( event.bytesTotal > 0 ) {
+			this.setProgress( event.bytesLoaded / event.bytesTotal );
+		} else {
+			this.setProgress( 0 );
+		}
+	}
+	
+	/**
+	 * On loader complete
+	 * @param	event
+	 */
+	protected function onLoaderComplete( event : Event ):void {
+		this.data = this.loader.data;
+		this.processData();
+	}
+	
+	/**
+	 * Process data
+	 */
+	protected function processData () : void {
+		this.setProgress( 1 );
+		this.setState( OperationState.COMPLETED );
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	override public function start() : void  {
+		
+		this.setProgress( 0 );
+		
+		
+		this.setState( OperationState.RUNNING );
+		try {
+			this.loader.load( this.url );
+		} catch ( error : Error ) {
+			this.setState( OperationState.FAILED );
+		}
+		
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	override public function stop() : void  {
+		this.loader.close()
+		this.setState( OperationState.STOPPED );
+		super.stop();
+	}
+	
+	/**
+	 * Get raw (unprocessed) data
+	 * @return	raw untyped data
+	 */
+	public function getData () : * {
+		this.data;
+	}
+	
+	/**
+	 * Get loader url
+	 * @return
+	 */
+	public function getUrl () : URLRequest {
+		return this.url;
+	}
+	
+	/**
+	 * Set url
+	 * @param	url	String or URLRequest
+	 */
+	public function setUrl ( url : * ) : void {
+		this.url = StringUtil.createUrlRequest( url );
+	}
+	
+	/**
+	 * Stringified representation of object
+	 * @return
+	 */
+	override public function toString () : String {
+		return "[object UrlLoadOperation] url: " + this.getUrl().url + " ]";
+	}
+	
+}
+	
+}

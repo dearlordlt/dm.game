@@ -1,0 +1,20 @@
+package ucc.operation.tween  {
+	import ucc.operation.AbstractOperation;
+	
+/**
+ * 
+ *
+ * @version $Id$
+ */
+public class FlTweenOperation extends AbstractOperation {
+	
+	/**
+	 * Class constructor
+	 */
+	public function FlTweenOperation () {
+		
+	}
+	
+}
+	
+}

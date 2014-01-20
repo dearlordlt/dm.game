@@ -1,0 +1,79 @@
+package ucc.ui.window {
+	import flash.events.IEventDispatcher;
+	import flash.geom.Point;
+	
+/**
+ * Native window
+ * Lifecycle of window
+ * 1. In a constructor Window checks if it not marked as "Single" or "Updateable" type window. If yes, further execution is stopped and window instance is left for GC.
+ * 2. If instantiation allowed windows manager calls #draw() method
+ * 3. Windows manager calls #initialize() method
+ * @version $id$
+ */
+public interface NativeWindow extends IEventDispatcher {
+	
+	/**
+	 * Get window id
+	 */
+	function get id () : String;
+	
+	/**
+	 * Initialize window bussines logic. In overriden method put all bussines login initialization code but never call this method directly. It will be called by WindowManager if instantiation is allowed.
+	 */
+	function initialize () : void;
+	
+	/**
+	 * Draw GUI. This method is called when windows instantiation is allowed by WindowsManager before #initialize() method
+	 */
+	function draw () : void;
+	
+	/**
+	 * Is window closeable? 
+	 * @return	true by default
+	 */
+	function isCloseable () : Boolean;
+	
+	/**
+	 * Is modal? 
+	 * @return	false by default
+	 */
+	function isModal () : Boolean;
+	
+	/**
+	 * Is draggable?
+	 * @return	true by default
+	 */
+	function isDraggable () : Boolean;
+	
+	/**
+	 * Window must be single?
+	 * @return	false by default
+	 */
+	function mustBeSingle () : Boolean;
+	
+	/**
+	 * Is window updateable? If yes, #update() method must be implemented
+	 * @return	true if updateable. False by default
+	 */
+	function isUpdateable () : Boolean;
+	
+	/**
+	 * Get initial position of window. If it's null, windows should be positioned be WindowsManager system.
+	 * @return
+	 */
+	function getInitialPosition () : Point;
+	
+	/**
+	 * Update instance with data. Must be implemented on every class that is updateable
+	 * @param	... data
+	 */
+	function update ( ... data ) : void;
+	
+	/**
+	 * Destroy window
+	 */
+	function destroy () : void;
+	
+}
+	
+}

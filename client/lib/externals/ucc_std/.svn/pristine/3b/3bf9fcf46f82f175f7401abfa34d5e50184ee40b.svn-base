@@ -1,0 +1,437 @@
+package ucc.data.service  {
+	import flash.utils.clearTimeout;
+	import flash.utils.setInterval;
+	import ucc.error.IllegalStateException;
+	import flash.errors.IllegalOperationError;
+	import flash.events.EventDispatcher;
+	import flash.net.NetStreamInfo;
+	import flash.utils.setTimeout;
+	import ucc.error.IllegalArgumentException;
+	import flash.events.NetStatusEvent;
+	import flash.net.NetConnection;
+	import flash.net.ObjectEncoding;
+	import flash.net.Responder;
+	import ucc.logging.Logger;
+	import ucc.net.NetStatusInfo;
+	import ucc.net.NetStatusInfoTable;
+	import ucc.util.ArrayUtil;
+	
+/**
+ * Amp PHP client
+ *
+ * @version $Id$
+ */
+public class AmfPhpClient extends EventDispatcher {
+	
+	/** Connect retry interval in miliseconds */
+	public static const RETRY_INTERVAL		: int = 3000;
+	
+	/** Singleton instance */
+	private static var instances : Object = {};
+	
+	/**
+	 * Get singleton instance of class
+	 * @param	name. If name is specified
+	 * @return 	singleton instance	AmfPhpClient
+	 */
+	public static function getInstance ( name : String = null ) : AmfPhpClient {
+		
+		if ( !instances[name] ) {
+			instances[name] = new AmfPhpClient( name );
+		}
+		
+		return instances[name];
+		
+	}
+	
+	/** Net connection */
+	protected var netConnection		: NetConnection;
+	
+	/** Gateway url */
+	protected var gatewayUrl		: String;
+	
+	/** Call queue (because of disconnected client) */
+	protected var callQueue			: Array = [];
+	
+	/** Current call */
+	protected var currentCall		: RemoteMethodCall;
+	
+	/** Timeout id */
+	protected var timeoutId			: int;
+	
+	/** Internal responder */
+	protected var responder			: Responder;
+	
+	/** Client instance name */
+	protected var name				: String;
+	
+	/** Try to reconnect? */
+	protected var reconnect			: Boolean;
+	
+	/** Call observers */
+	protected var callObservers		: Object = {};
+	
+	/**
+	 * Class constructor
+	 */
+	public function AmfPhpClient ( name : String = null ) {
+		this.name = name;
+		this.responder = new Responder( this.onResult, this.onFault );
+	}
+	
+	/**
+	 * Set connection credentials
+	 * @param	gatewayUrl
+	 * @return
+	 */
+	public function setCredentials ( gatewayUrl : String ) : AmfPhpClient {
+		
+		if ( gatewayUrl && ( gatewayUrl.length > 0 ) ) {
+			this.gatewayUrl = gatewayUrl;
+		} else {
+			throw new IllegalArgumentException( "ucc.data.service.AmfPhpClient.setConnectionCredentials() : specified gatewayUrl is null or empty!" );
+		}
+		
+		return this;
+		
+	}
+	
+	/**
+	 * Get gateway url
+	 */
+	public function getGatewayUrl () : String {
+		return this.gatewayUrl;
+	}
+	
+	/**
+	 * Get client name
+	 * @return
+	 */
+	public function getName () : String {
+		return this.name;
+	}
+	
+	/**
+	 * Connect to remoting service
+	 * @param	gatewayUrl
+	 */
+	public function connect ( gatewayUrl : String = null ) : AmfPhpClient {
+		
+		
+		if ( this.isConnected() ) {
+			Logger.log( "[ucc.data.service.AmfPhpClient.connect] : client is already connected!", Logger.LEVEL_INFO );
+			return this;
+		}
+		
+		
+		if ( gatewayUrl ) {
+			this.setCredentials( gatewayUrl );
+		}
+		
+		if ( !this.isConnected() ) {
+			
+			if ( !this.gatewayUrl ) {
+				throw new IllegalArgumentException( "ucc.data.service.AmfPhpClient.connect() : connection credentials not set!" );
+			}
+			
+			// setup connection
+			this.netConnection = new NetConnection();
+			this.netConnection.objectEncoding = ObjectEncoding.AMF0;
+			this.netConnection.addEventListener( NetStatusEvent.NET_STATUS, this.onNetStatus );
+			
+			this.dispatchEvent( new ServerClientEvent( ServerClientEvent.CONNECTING ) );
+			
+			this.netConnection.connect( this.gatewayUrl );
+			
+			this.processCallQueue();
+			
+			
+		} else {
+			throw new IllegalStateException( "ucc.data.service.AmfPhpClient.connect() : connection is already opened!" );
+		}
+		
+		return this;
+		
+	}
+	
+	/**
+	 * Disconnect client from server
+	 */
+	public function disconnect () : void {
+		
+		if ( this.isConnected() ) {
+			this.netConnection.close();
+		}
+	}
+	
+	/**
+	 * Is client connected to server?
+	 * @return
+	 */
+	public function isConnected () : Boolean {
+		return this.netConnection && this.netConnection.connected;
+	}
+	
+	/**
+	 * Cal remove method with params
+	 * @param	remoteMethod
+	 * @param	responder
+	 * @param	... params
+	 */
+	public function callService( remoteMethod : String, params : Array = null, onResultCallback : Function = null, onFaultCallback : Function = null ) : AmfPhpClient {
+		
+		var remoteMethodCall : RemoteMethodCall = new RemoteMethodCall( remoteMethod, params, onResultCallback, onFaultCallback );
+		
+		// Add stack trace to call 
+		remoteMethodCall.callStackTrace = ( new Error() ).getStackTrace();
+		
+		this.callQueue.push( remoteMethodCall );
+		
+		if ( !this.isConnected() ) {
+			this.connect();
+		} else {
+			this.processCallQueue();
+		}
+		
+		return this;
+		
+	}
+	
+	/**
+	 * Place remote method call directly
+	 * @param remote method call
+	 */
+	public function placeRemoteMethodCall ( remoteMethodCall : RemoteMethodCall ) : AmfPhpClient {
+		
+		this.callQueue.push( remoteMethodCall );
+		
+		if ( !this.isConnected() ) {
+			this.connect();
+		} else {
+			this.processCallQueue();
+		}
+		
+		return this;		
+		
+	}
+	
+	/**
+	 * Observe remote call
+	 * @param	observerFunction	observer function. Must accept one parameter - RemoteRemoteMethodCall
+	 * @param	remoteMethod	remote method name
+	 * @param	... params	params that has to match call. You don't have to specify all params.
+	 */
+	public function addCallObserver ( observerFunction : Function, remoteMethod : String, ... params ) : void {
+		
+		if ( ( observerFunction == null ) || ( !remoteMethod || ( remoteMethod.length == 0 ) ) ) {
+			throw new IllegalArgumentException("Observer function and remoteMethod must be not null or empty");
+		}
+		
+		if ( !this.callObservers[ remoteMethod ] ) {
+			this.callObservers[ remoteMethod ] = [];
+		}
+		
+		this.callObservers[ remoteMethod ].push( new Observer( observerFunction, params ) );
+		
+	}
+	
+	/**
+	 * Remove call observer
+	 * @param	observerFunction
+	 * @param	remoteMethod
+	 * @param	... params
+	 */
+	public function removeCallObserver ( observerFunction : Function, remoteMethod : String, ... params ) : void {
+		
+		if ( !this.callObservers[ remoteMethod ] ) {
+			return;
+		}
+		
+		var matchingByFunction : Array = ArrayUtil.getElementsByPropertyValue( this.callObservers[ remoteMethod ], "observerFunction", observerFunction );
+		
+		for each( var observer : Observer in matchingByFunction ) {
+			if ( ArrayUtil.equals( observer.params, params ) ) {
+				ArrayUtil.removeElementByReference( this.callObservers[ remoteMethod ], observer );
+			}
+		}
+		
+	}
+	
+	/**
+	 * Process call queue
+	 */
+	protected function processCallQueue () : void {
+		
+		var remoteMethodCall : RemoteMethodCall;
+		
+		if ( this.currentCall ) {
+			// not processing further - waiting for current call to complete
+			return;
+		} else if ( this.callQueue.length > 0 ) {
+			remoteMethodCall = this.currentCall = this.callQueue.shift();
+		} else {
+			return;
+		}
+		
+		// Logger.log( "[AmfPhpClient.processCallQueue] : " + remoteMethodCall, Logger.LEVEL_DEBUG );
+		var params : Array;
+		
+		// when concatening array with null result is with null added to end. We don't want this.
+		if ( remoteMethodCall.params ) {
+			params = [ remoteMethodCall.remoteMethod, this.responder ].concat( remoteMethodCall.params );
+		} else {
+			params = [ remoteMethodCall.remoteMethod, this.responder ];
+		}
+		this.netConnection.call.apply( null, params );
+	}
+	
+	/**
+	 * On net status event
+	 */
+	protected function onNetStatus ( event : NetStatusEvent ) : void {
+		
+		var netStatusInfo : NetStatusInfo = NetStatusInfo.getNetStatusInfoByCode( event.info.code );
+		
+		if ( !netStatusInfo ) {
+			Logger.log( "AmfPhpClient.onNetStatus() unknown NetStatus recieved with code : " + event.info.code, Logger.LEVEL_WARN );
+			return;
+		}
+		
+		if ( netStatusInfo.level == "error" ) {
+			Logger.log( "AmfPhpClient.onNetStatus() some error status received : " + netStatusInfo.toString(), Logger.LEVEL_ERROR + ", dump: " + JSON.stringify( event.info, null, 4 ) );
+		}
+		
+		switch ( event.info.code ) {
+			
+			case NetStatusInfo.NETCONNECTION_CONNECT_FAILED.code:
+				this.dispatchEvent( new ServerClientEvent( ServerClientEvent.CONNECTION_FAILED, event.info ) );
+				// return current call to queue
+				if ( this.currentCall ) {
+					this.callQueue.unshift( this.currentCall );
+					this.currentCall = null;
+				}
+				this.disconnect();
+				this.timeoutId = setTimeout( this.connect, RETRY_INTERVAL );
+				Logger.log( "AmfPhpClient.onNetStatus() : connection failed. Trying to reconnect in " + RETRY_INTERVAL / 1000 + " seconds", Logger.LEVEL_WARN );
+				break;
+			
+			case NetStatusInfo.NETCONNECTION_CALL_FAILED.code:
+				Logger.log( "AmfPhpClient.onNetStatus() : call failed!", Logger.LEVEL_ERROR );
+				this.onFault( { error : "The NetConnection.call method was not able to invoke the server-side method or command.", errorType : "service" } );
+				break;
+				
+			// this is never fired...
+			case NetStatusInfo.NETCONNECTION_CONNECT_SUCCESS.code:
+				trace( "AmfPhpClient.onNetStatus() : successfully connected!" );
+				this.dispatchEvent( new ServerClientEvent( ServerClientEvent.CONNECTED ) );
+				this.processCallQueue();
+				break;
+			
+			case NetStatusInfo.NETCONNECTION_CONNECT_CLOSED.code:
+				trace( "AmfPhpClient.onNetStatus() : connection closed!"  );
+				this.dispatchEvent( new ServerClientEvent( ServerClientEvent.CLOSED ) );
+				this.netConnection.removeEventListener( NetStatusEvent.NET_STATUS, this.onNetStatus );
+				this.netConnection = null;
+				break;
+				
+			default:
+				break;
+		}
+		
+	}
+	
+	/**
+	 * On result
+	 * @param	result
+	 */
+	protected function onResult ( result : Object ) : void {
+		
+		var remoteMethodCall : RemoteMethodCall = this.currentCall;
+		
+		remoteMethodCall.lastResult = result;
+		
+		if ( ( result !== null ) && ( ( ( typeof( result ) == "boolean" ) && ( result === false ) ) || ( ( typeof( result ) == "object" ) && result["error"] ) ) ) {
+			// call onFault and process error
+			this.onFault( result );
+			return;
+		}
+		
+		this.currentCall = null;
+		
+		
+		if ( remoteMethodCall.onResultCallback != null ) {
+			try {
+				remoteMethodCall.onResultCallback( result );
+			} catch ( error : ArgumentError ) {
+				if ( remoteMethodCall.onResultCallback.length == 0 ) {
+					remoteMethodCall.onResultCallback();
+				} else {
+					Logger.log( "ucc.data.service.AmfPhpClient.onResult() : ArgumentError bubling from onResult callback function: " + error.getStackTrace(), Logger.LEVEL_ERROR );
+				}
+				
+			}
+			
+		}
+		
+		// notify observers
+		if ( this.callObservers[ remoteMethodCall.remoteMethod ] ) {
+			for each( var observer : Observer in this.callObservers[ remoteMethodCall.remoteMethod ] ) {
+				if ( ArrayUtil.beginningMatches( observer.params, remoteMethodCall.params ) ) {
+					observer.observerFunction( remoteMethodCall.clone() );
+				}
+			}
+		}
+		
+		this.processCallQueue();
+		
+	}
+	
+	/**
+	 * On fault
+	 * @param	result
+	 */
+	protected function onFault ( result : Object ) : void {
+		
+		var remoteMethodCall : RemoteMethodCall = this.currentCall;
+		
+		this.currentCall = null;
+		
+		if ( remoteMethodCall.onFaultCallback != null ) {
+			try {
+				remoteMethodCall.onFaultCallback( result );
+			} catch ( error : ArgumentError ) {
+				remoteMethodCall.onFaultCallback();
+			}
+			
+		} else {
+			Logger.log( "AmfPhpClient.onFault() : error from server: " + remoteMethodCall + ", call stack trace: \n" + remoteMethodCall.getCallStackTrace() + "\n result: \n" + JSON.stringify( result, null, 4 ) + ",\n call params: " + JSON.stringify( remoteMethodCall.params ), Logger.LEVEL_ERROR );
+		}
+		
+		this.processCallQueue();
+		
+	}
+	
+}
+	
+}
+
+/**
+ * Observer VO. Stores info about observer adn mathing params
+ */
+class Observer {
+	
+	/** Observer function */
+	public var observerFunction : Function;
+		
+	/** Params */
+	public var params : Array;
+	
+	/**
+	 * Class constructor
+	 */
+	public function Observer ( observerFunction : Function, params : Array ) {
+		this.observerFunction = observerFunction;
+		this.params = params;
+	}
+	
+}

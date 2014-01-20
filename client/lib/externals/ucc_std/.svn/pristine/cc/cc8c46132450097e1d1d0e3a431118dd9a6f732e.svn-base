@@ -1,0 +1,36 @@
+package ucc.operation.generic {
+	import ucc.operation.AbstractOperation;
+	import ucc.operation.OperationState;
+	
+/**
+ * Passive operation does nothing. It doesn't end until manual call to method stop()
+ *
+ * @version $Id$
+ */
+public class PassiveOperation extends AbstractOperation {
+	
+	/**
+	 * Class constructor
+	 */
+	public function PassiveOperation () {
+		
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	override public function start() : void  {
+		this.setProgress( 0 );
+		this.setState( OperationState.RUNNING );
+	}
+	
+	/**
+	 * Stop and finnish operation
+	 */
+	override public function stop() : void  {
+		this.setState( OperationState.STOPPED );
+	}
+	
+}
+	
+}

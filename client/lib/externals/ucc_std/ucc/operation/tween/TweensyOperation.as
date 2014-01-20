@@ -1,0 +1,125 @@
+package ucc.operation.tween  {
+	import com.flashdynamix.motion.Tweensy;
+	import com.flashdynamix.motion.TweensyTimeline;
+	import com.flashdynamix.motion.TweensyTimelineZero;
+	import com.flashdynamix.motion.TweensyZero;
+	import ucc.operation.AbstractOperation;
+	import ucc.operation.OperationState;
+	import ucc.util.ObjectUtil;
+	import fl.motion.easing.Circular;
+	
+/**
+ * Tweensy tween wrapper
+ *
+ * @version $Id: TweensyOperation.as 1 2013-01-03 11:14:03Z rytis.alekna $
+ */
+public class TweensyOperation extends AbstractOperation {
+	
+	/** Duration */
+	protected var duration	: Number;
+	
+	/** Instance */
+	protected var instance 	: Object;
+	
+	/** To */
+	protected var to 		: Object;
+	
+	/** Ease */
+	protected var ease 		: Function;
+	
+	/** Delay start */
+	protected var delayStart : Number;
+	
+	/** Tweensy timeline */
+	protected var tween		: TweensyTimeline;
+	
+	/** Update */
+	protected var update	 : Object;
+	
+	/**
+	 * Class constructor
+	 */
+	public function TweensyOperation ( instance:Object, to:Object, duration:Number = 0.5, ease:Function = null, delayStart:Number = 0, update : Object = null, dispatchProgress : Boolean = false ) {
+		this.update = update;
+		this.duration = duration;
+		this.dispatchProgress = dispatchProgress;
+		this.delayStart = delayStart;
+		this.ease = ease;
+		this.to = to;
+		this.instance = instance;
+		this.dispatchProgress = dispatchProgress;
+		
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	public override function start () : void {
+		
+		this.setState( OperationState.RUNNING );
+		
+		try {
+			this.tween = Tweensy.to( this.instance, this.to, this.duration, Circular.easeOut, this.delayStart, this.update, this.onComplete );
+			
+			if ( this.dispatchProgress ) {
+				this.tween.onUpdate = this.onUpdate;
+			}
+			
+		} catch ( error : Error ) {
+			trace( error, error.getStackTrace() );
+			this.setState( OperationState.FAILED );
+		}
+		
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	public override function pause () : void {
+		
+		this.setState( OperationState.PAUSED );
+		this.tween.pause();
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	public override function resume () : void {
+		this.setState( OperationState.RUNNING );
+		this.tween.resume();
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	public override function stop () : void {
+		this.setState( OperationState.STOPPED );
+		this.tween.stop(this.instance);
+	}
+	
+	/**
+	 * On update
+	 */
+	protected function onUpdate () : void {
+		this.setProgress( this.tween.position );
+	}
+	
+	/**
+	 * On complete
+	 */
+	protected function onComplete () : void {
+		this.setState( OperationState.COMPLETED );
+		this.clear();
+	}
+	
+	/**
+	 * Clear operation for garbage collector
+	 */
+	protected function clear () : void {
+		this.tween.dispose();
+		this.instance = null;
+	}
+	
+}
+	
+}

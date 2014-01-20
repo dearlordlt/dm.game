@@ -1,0 +1,9 @@
+delimiter //
+CREATE TRIGGER finance_history_watcher AFTER UPDATE ON avatar_vars
+FOR EACH ROW
+    BEGIN
+         IF ( NEW.label = 'money' ) THEN
+            INSERT INTO finance_history (avatar_id, amount, total_money_before) VALUES(NEW.avatar_id, NEW.value*1 - OLD.value*1, OLD.value*1);
+         END IF;
+    END;//
+delimiter ;

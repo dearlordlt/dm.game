@@ -1,0 +1,111 @@
+package ucc.operation.load {
+	import ucc.cache.BitmapDataCache;
+	import ucc.error.IllegalArgumentException;
+	import ucc.logging.Logger;
+	import ucc.operation.AbstractOperation;
+	import ucc.operation.generic.SequentialOperationGroup;
+	import ucc.operation.OperationEvent;
+	import ucc.operation.OperationState;
+	
+/**
+ * Massive images load operation. When images are loaded they are stores to bitmap data cache
+ * @version $Id$
+ */
+public class MassBitmapDataLoadOperation extends AbstractOperation {
+	
+	/** Image urls */
+	protected var imageUrls					: Array;
+	
+	/** Bitmap data cache */
+	protected var bitmapDataCahce			: BitmapDataCache;
+	
+	/** Sequantial operation group */
+	protected var sequentialOperationGroup	: SequentialOperationGroup;
+	
+	/**
+	 * Class constructor
+	 * @param	images	Array of strings (urls) or XMLList of strings (urls)
+	 * @param	cacheId	id of bitmap data cache. You will use this cache id to access loaded image data with BitmapDataCache.getInstance( cacheId )
+	 */
+	public function MassBitmapDataLoadOperation( images : Array, cacheId : String ) {
+		
+		if ( !images ) {
+			throw new IllegalArgumentException( "Parameter [images] must be not null!" );
+		}
+		
+		if ( !cacheId ) {
+			throw new IllegalArgumentException( "Parameter [cacheId] must not be null" );
+		}
+		
+		this.imageUrls = images;
+		
+		this.bitmapDataCahce = new BitmapDataCache( cacheId );
+		
+		this.sequentialOperationGroup = new SequentialOperationGroup();
+		
+		var bitmapDataLoadOperation : BitmapDataLoadOperation;
+		
+		for ( var i : int = 0; i < this.imageUrls.length; i++ ) {
+			bitmapDataLoadOperation = new BitmapDataLoadOperation( this.imageUrls[i] );
+			bitmapDataLoadOperation.addListener( OperationEvent.COMPLETE, this.onSingleImageLoaded );
+			this.sequentialOperationGroup.addOperation( bitmapDataLoadOperation );
+		}
+		
+		this.sequentialOperationGroup.addListener( OperationEvent.PROGRESS, this.onSequentialOperationGroupProgress );
+		this.sequentialOperationGroup.addListener( OperationEvent.COMPLETE, this.onAllImagesLoaded );
+		this.sequentialOperationGroup.addListener( OperationEvent.FAIL, this.onImageLoadFail );
+	}
+	
+	/**
+	 * On sinle image loaded
+	 * @param	event
+	 */
+	protected function onSingleImageLoaded ( event : OperationEvent ) : void {
+		var bitmapDataLoadOperation : BitmapDataLoadOperation = event.target as BitmapDataLoadOperation;
+		this.bitmapDataCahce.storeObject( bitmapDataLoadOperation.getBitmapData(), bitmapDataLoadOperation.getUrl().url );
+	}
+	
+	/**
+	 * On sequential operation group progress
+	 * @param	event
+	 */
+	protected function onSequentialOperationGroupProgress ( event : OperationEvent ) : void {
+		this.setProgress( this.sequentialOperationGroup.getProgress() );
+	}
+	
+	/**
+	 * On all images loaded
+	 * @param	event
+	 */
+	protected function onAllImagesLoaded ( event : OperationEvent ) : void {
+		this.setState( OperationState.COMPLETED );
+	}
+	
+	/**
+	 * On image load fail
+	 * @param	event
+	 */
+	protected function onImageLoadFail ( event : OperationEvent ) : void {
+		Logger.log( "[ucc.operation.load.MassBitmapDataLoadOperation.onImageLoadFail] : ", Logger.LEVEL_WARN );
+		this.setState( OperationState.FAILED );
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	override public function start () : void {
+		this.sequentialOperationGroup.start();
+		this.setState( OperationState.RUNNING );
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	override public function stop (  ) : void {
+		this.sequentialOperationGroup.stop();
+		this.setState( OperationState.STOPPED );
+	}
+	
+}
+	
+}

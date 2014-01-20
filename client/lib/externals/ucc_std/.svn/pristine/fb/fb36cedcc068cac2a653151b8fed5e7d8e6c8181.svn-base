@@ -1,0 +1,19 @@
+package ucc.logging.client {
+	
+/**
+ * ...
+ * @version $Id$
+ */
+public interface LoggingClient {
+	
+	/**
+	 * Trace message
+	 * 
+	 * @param	message mesage
+	 * @param	level debug level, one of Debug.LEVEL_*
+	 */
+	function output( message : *, level : String, caller : * = null ) : void;
+	
+}
+	
+}

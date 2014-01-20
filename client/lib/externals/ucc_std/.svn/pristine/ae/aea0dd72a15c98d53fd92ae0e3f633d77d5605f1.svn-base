@@ -1,0 +1,184 @@
+package ucc.ui.window.tab  {
+	import fl.controls.Button;
+	import fl.text.ruler.TabMarker;
+	import flash.display.DisplayObject;
+	import flash.display.DisplayObjectContainer;
+	import flash.display.Sprite;
+	import flash.events.MouseEvent;
+	import flash.geom.Point;
+	import flash.utils.Dictionary;
+	import org.as3commons.lang.Assert;
+	import org.as3commons.lang.ClassUtils;
+	import org.as3commons.lang.DictionaryUtils;
+	import ucc.error.IllegalArgumentException;
+	
+/**
+ * Tab manager
+ *
+ * @version $Id$
+ */
+public class TabManager {
+	
+	/** targetDO */
+	protected var targetDO 			: DisplayObjectContainer;
+	
+	/** position */
+	protected var position 			: Point;
+	
+	/** Tabs */
+	protected var tabs				: Array = [];
+	
+	/** Tab DOs to TabVOs */
+	protected var tabsToTabVOs		: Dictionary = new Dictionary( true );
+	
+	/** Current tab */
+	protected var currentTab		: DisplayObject;
+	
+	/** tabs position */
+	protected var tabsPosition 		: Point;
+	
+	/** horizontalMargin */
+	protected var horizontalMargin : Number;
+	
+	/** tabButtonsContainer */
+	protected var tabButtonsContainer : Sprite = new Sprite();
+	
+	/**
+	 * Class constructor
+	 */
+	public function TabManager ( targetDO : DisplayObjectContainer, position : Point, tabsPosition : Point, horizontalMargin : Number = 10 ) {
+		this.horizontalMargin = horizontalMargin;
+		this.tabsPosition = tabsPosition;
+		this.position = position;
+		this.targetDO = targetDO;
+	}
+	
+	/**
+	 * Add tab
+	 * @param	title
+	 * @param	tab		DisplayObject or Class of display object
+	 * @param	reuse or recreate instance on tab open?
+	 * @return
+	 */
+	public function addTab ( title : String, tab : *, preserve : Boolean = true ) : TabManager {
+		
+		Assert.notNull( title, "Title can\'t be null!" );
+		
+		if ( ( tab is DisplayObject ) || ( ( tab is Class ) && ( ClassUtils.isSubclassOf( tab, DisplayObject ) ) ) ) {
+			tabs.push( new TabVO( title, tab, preserve ) );
+			return this;
+		} else {
+			throw new IllegalArgumentException("Tab must be display object or class!");
+		}
+		
+	}
+	
+	/**
+	 * Draw layout
+	 * @return
+	 */
+	public function draw () : TabManager {
+		
+		var currentPosition : Number = 0;
+		
+		var button : Button;
+		
+		this.targetDO.addChild( this.tabButtonsContainer );
+		tabButtonsContainer.x = this.tabsPosition.x;
+		tabButtonsContainer.y = this.tabsPosition.y;
+		
+		for each( var tabVO : TabVO in this.tabs ) {
+			
+			button = new Button();
+			button.label = tabVO.title;
+			button.width = button.textField.textWidth + 10;
+			button.x = currentPosition;
+			this.tabButtonsContainer.addChild( button );
+			
+			tabVO.tabButton = button;
+			
+			currentPosition += button.width + horizontalMargin;
+			
+		}
+		
+		return this;
+		
+	}
+	
+	/**
+	 * Open tab
+	 * @param	title
+	 */
+	public function openTab ( title : String ) : void {
+		
+	}
+	
+	private function closeCurrentTab () : void {
+		
+		if ( this.currentTab ) {
+			
+			if ( TabVO( this.tabsToTabVOs[ this.currentTab ] ).preserve ) {
+				this.currentTab.visible = false;
+			} else {
+				this.currentTab
+			}
+			
+		}
+		
+	}
+	
+	/**
+	 * Clean up tab references
+	 */
+	public function destroy () : void {
+		
+		for (var tab : Object in this.tabsToTabVOs ) {
+			delete this.tabsToTabVOs[ tab ];
+		}
+		
+	}
+	
+	private function addTabDO ( tab : DisplayObject ) : void {
+		
+	}
+	
+	private function addTabClass ( tabClass : Class ) : void {
+		
+	}
+	
+	
+	private function onTabNavigatorClick ( event : MouseEvent ) : void {
+		
+	}
+	
+}
+	
+}
+import fl.controls.Button;
+
+/**
+ * Tab VO
+ */
+class TabVO {
+	
+	/** tabButton */
+	public var tabButton : Button;
+	
+	/** preserve */
+	public var preserve : Boolean;
+	
+	/** title */
+	public var title : String;
+		
+	/** tab */
+	public var tabClass : Class;
+	
+	public function TabVO ( title : String, tabClass : Class, preserve : Boolean, tabButton : Button ) {
+		this.tabButton = tabButton;
+		this.preserve = preserve;
+		this.title = title;
+		this.tabClass = tabClass;
+		
+	}
+	
+}

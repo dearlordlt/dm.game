@@ -1,0 +1,207 @@
+package ucc.util.matcher  {
+	import flash.utils.getQualifiedClassName;
+	import ucc.error.IllegalArgumentException;
+	
+/**
+ * Object matcher
+ * {0:["s:string",String, "r:0-10", /some/, "m:l*bas", 10], "/0-$":[]}
+ * @version $Id: ObjectMatcher.as 3 2013-01-31 07:31:58Z rytis.alekna $
+ */
+public class ObjectMatcher extends BaseMatcher {
+	
+	/** Oobject type */
+	public static const OBJECT 			: String = "Object";
+	
+	/** Pattern */
+	protected var pattern				: Object;
+	
+	/**
+	 * Class constructor
+	 */
+	public function ObjectMatcher ( pattern : Object ) {
+		
+		if ( getQualifiedClassName(pattern) != OBJECT ) {
+			throw new IllegalArgumentException( "Pattern must be raw object!" );
+		}
+		
+		this.pattern = pattern;
+		
+	}
+	
+	protected function buildMatcher () : void {
+		
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	public override function match ( object : *  ) : Boolean {
+		return super.match(object);
+	}
+	
+}
+	
+}
+import ucc.error.IllegalArgumentException;
+import ucc.error.UnsupportedOperationException;
+
+interface Matcher {
+	
+	/**
+	 * Match object agains matcher
+	 * @param	object
+	 * @return	true if matches
+	 */
+	function match ( object : * ) : Boolean;
+	
+	/**
+	 * Get pattern
+	 * @return	pattern
+	 */
+	function getPattern () : * ;
+	
+}
+
+class BaseMatcher implements Matcher {
+	
+	/** Pattern */
+	protected var pattern : * ;
+	
+	/**
+	 * Class constructor
+	 */
+	public function BaseMatcher ( pattern : * ) {
+		this.pattern = pattern;
+	}
+	
+	/**
+	 *	Match
+	 */
+	public function match (object : * ) : Boolean {
+		throw new UnsupportedOperationException("Not implemented!");
+		return false;
+	}
+	
+	/**
+	 *	
+	 */
+	public function getPattern () : * {
+		return this.pattern;
+	}
+	
+}
+
+class StringMatcher extends BaseMatcher {
+	
+	/**
+	 * Class constructor
+	 */
+	public function StringMatcher ( string : String ) {
+		super(string);
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	override public function match (object : * ) : Boolean {
+		return ( object == this.pattern );
+	}
+	
+}
+
+class NumberMatcher extends BaseMatcher {
+	
+	/**
+	 * Class constructor
+	 */
+	public function NumberMatcher ( number : Number ) {
+		super(number);
+	}
+	
+	
+	/**
+	 *	@inheritDoc
+	 */
+	public override function match ( object : *  ) : Boolean {
+		
+		if ( !( object is Number ) ) {
+			return false;
+		}
+		
+		return ( this.pattern == object);
+	}
+	
+}
+
+class RangeMatcher extends Matcher {
+	
+	/** SLASH */
+	public static const SLASH : String = "/";
+	
+	/** Illegal expression error */
+	public static const ILLEGAL_EXPRESSION	: String = "Illegal expression given!";
+	
+	/** Min */
+	private var min	: Number;
+	
+	/** Max */
+	private var max	: Number;
+	
+	/**
+	 * Class constructor
+	 * @param	range	a String with two numbers separated by slash "/" representing minimum and maximum values. You can use nepagative and positive Infinity as Infinity or -Infinity
+	 */
+	public function RangeMatcher ( range : String ) {
+		super( range );
+		
+		if ( range.indexOf( SLASH ) == -1 ) {
+			throw new IllegalArgumentException(ILLEGAL_EXPRESSION);
+		}
+		
+		var values : Array = range.split( SLASH ).map( parseFloat );
+		
+		if ( ( values.length > 2 ) ) {
+			throw new IllegalArgumentException(ILLEGAL_EXPRESSION);
+		}
+		
+		this.min = Math.min.apply(null, values );
+		this.max = Math.max.apply(null, values );
+		
+		if ( isNaN( this.min ) || isNaN( this.max ) ) {
+			throw new IllegalArgumentException(ILLEGAL_EXPRESSION);
+		}
+		
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	public override function match ( object : *  ) : Boolean {
+		if ( !( object is Number ) ) {
+			return false;
+		}
+		return ( this.min <= object ) && ( this.max >= object );
+	}
+	
+}
+
+class RegExpMatcher extends BaseMatcher {
+	
+	/**
+	 * Class constructor
+	 */
+	public function RegExpMatcher ( pattern : RegExp ) {
+		super( pattern );
+	}
+	
+	/**
+	 *	@inheritDoc
+	 */
+	public override function match ( object : *  ) : Boolean {
+		if ( !( object is String ) ) {
+			return false;
+		}
+		return (this.pattern as RegExp ).test(object);
+	}
+	
+}

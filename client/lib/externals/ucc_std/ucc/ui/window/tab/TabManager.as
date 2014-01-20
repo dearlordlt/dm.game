@@ -1,0 +1,306 @@
+package ucc.ui.window.tab  {
+	import dm.game.windows.DmWindow;
+	import fl.controls.Button;
+	import fl.text.ruler.TabMarker;
+	import flash.display.DisplayObject;
+	import flash.display.DisplayObjectContainer;
+	import flash.display.MovieClip;
+	import flash.display.Sprite;
+	import flash.events.MouseEvent;
+	import flash.geom.Point;
+	import flash.utils.Dictionary;
+	import org.as3commons.lang.Assert;
+	import org.as3commons.lang.ClassUtils;
+	import org.as3commons.lang.DictionaryUtils;
+	import ucc.error.IllegalArgumentException;
+	import ucc.error.IllegalStateException;
+	import ucc.ui.window.NativeWindow;
+	import ucc.ui.window.WindowEvent;
+	import ucc.util.ArrayUtil;
+	
+/**
+ * Tab manager
+ *
+ * @version $Id: TabManager.as 27 2013-05-06 05:42:57Z rytis.alekna $
+ */
+public class TabManager {
+	
+	/** targetDO */
+	protected var targetDO 			: DisplayObjectContainer;
+	
+	/** position */
+	protected var position 			: Point;
+	
+	/** Tabs */
+	protected var tabs				: Array = [];
+	
+	/** Tab DOs to TabVOs */
+	protected var tabsToTabVOs		: Dictionary = new Dictionary( true );
+	
+	/** Current tab */
+	protected var currentTab		: TabVO;
+	
+	/** horizontalMargin */
+	protected var horizontalMargin : Number = 10;
+	
+	/** tabButtonsContainer */
+	protected var tabButtonsContainer : Sprite = new Sprite();
+	
+	/** Chrome */
+	protected var chromeDO			: DisplayObject;
+	
+	/**
+	 * Class constructor
+	 */
+	public function TabManager ( targetDO : DisplayObjectContainer, position : Point ) {
+		this.position = position;
+		this.targetDO = targetDO;
+	}
+	
+	/**
+	 * Add tab
+	 * @param	title
+	 * @param	tab		DisplayObject or Class of display object
+	 * @param	reuse or recreate instance on tab open?
+	 * @return
+	 */
+	public function addTab ( title : String, tabClass : Class, preserve : Boolean = true, params : Array = null ) : TabManager {
+		
+		Assert.notNull( title, "Title can\'t be null!" );
+		
+		if ( ClassUtils.isSubclassOf( tabClass, DisplayObject ) ) {
+			tabs.push( new TabVO( title, tabClass, preserve, params ) );
+			return this;
+		} else {
+			throw new IllegalArgumentException("Tab class must subclass DisplayObject!");
+		}
+		
+	}
+	
+	/**
+	 * Draw layout
+	 * @return
+	 */
+	public function draw () : TabManager {
+		
+		var currentPosition : Number = this.horizontalMargin;
+		
+		var button : Button;
+		
+		this.chromeDO = ClassUtils.newInstance( ClassUtils.forName( "ucc.ui.window.tab.TabChrome" ) );
+		
+		
+		this.targetDO.addChild( this.chromeDO );
+		
+		this.targetDO.addChild( this.tabButtonsContainer );
+		
+		tabButtonsContainer.x = this.chromeDO.x = this.position.x;
+		tabButtonsContainer.y = this.chromeDO.y = this.position.y;
+		
+		// var ButtonClass : Class = ClassUtils.forName( "ucc.ui.window.tab.TabButton" );
+		
+		for each( var tabVO : TabVO in this.tabs ) {
+			
+			button = new TabButton();
+			button.useHandCursor = true;
+			button.toggle = true;
+			button.label = tabVO.title;
+			button.drawNow();
+			button.width = button.textField.textWidth + 30;
+			button.x = currentPosition;
+			this.tabButtonsContainer.addChild( button );
+			
+			tabVO.tabButton = button;
+			
+			currentPosition += button.width + horizontalMargin;
+			
+		}
+		
+		if ( this.targetDO is DmWindow ) {
+			( this.targetDO as DmWindow ).redraw();
+		}
+		
+		this.tabButtonsContainer.addEventListener(MouseEvent.CLICK, this.onTabNavigatorClick );
+		
+		this.targetDO.addEventListener( WindowEvent.REDRAW, this.onChildRedraw );
+		
+		return this;
+		
+	}
+	
+	/**
+	 * Open tab
+	 * @param	title
+	 */
+	public function openTab ( title : String = null ) : void {
+		
+		this.closeCurrentTab();
+		
+		var tabVO : TabVO;
+		
+		if ( title ) {
+			tabVO = this.getTabVoByTitle( title );
+		}
+		
+		if ( !tabVO ) {
+			if ( this.tabs.length > 0 ) {
+				tabVO = this.tabs[0];
+			} else {
+				throw new IllegalStateException( "Can\'t open tab because there is no tabs added!" );
+			}
+		}
+		
+		if ( tabVO.tabDO ) {
+			tabVO.tabDO.visible = true;
+		} else {
+			var tab : DisplayObject = ClassUtils.newInstance( tabVO.tabClass, tabVO.params );
+			tab.x = this.position.x;
+			tab.y = this.position.y;
+			tabVO.tabDO = tab;
+			this.targetDO.addChild( tab );
+		}
+		
+		tabVO.tabButton.selected = true;
+		tabVO.tabButton.enabled = false;
+		
+		
+		this.currentTab = tabVO;
+		
+		
+		this.redraw();
+		
+		
+		
+	}
+	
+	/**
+	 * Redraw
+	 */
+	protected function redraw () : void {
+		
+		if ( this.currentTab.tabDO is TabView ) {
+			(this.currentTab.tabDO as TabView).redraw();
+		}
+		
+		if ( this.targetDO is DmWindow ) {
+			( this.targetDO as DmWindow ).redraw();
+			this.chromeDO.width = Math.max( this.tabButtonsContainer.width, this.currentTab.tabDO.width ) + 30;
+			this.chromeDO.height = Math.max( this.tabButtonsContainer.height, this.currentTab.tabDO.height ) + 60;
+			( this.targetDO as DmWindow ).redraw();
+		} else if ( this.targetDO is TabView ) {
+			( this.targetDO as TabView ).redraw();
+			this.chromeDO.width = Math.max( this.tabButtonsContainer.width, this.currentTab.tabDO.width ) + 30;
+			this.chromeDO.height = Math.max( this.tabButtonsContainer.height, this.currentTab.tabDO.height ) + 60;
+			( this.targetDO as TabView ).redraw();
+		}
+	}
+	
+	/**
+	 *	On child redraw
+	 */
+	protected function onChildRedraw ( event : WindowEvent ) : void {
+		// this.redraw();
+		event.stopPropagation();
+		this.chromeDO.width = Math.max( this.tabButtonsContainer.width, this.currentTab.tabDO.width ) + 30;
+		this.chromeDO.height = Math.max( this.tabButtonsContainer.height, this.currentTab.tabDO.height ) + 60;
+		
+	}
+	
+	/**
+	 * Close current tab
+	 */
+	private function closeCurrentTab () : void {
+		
+		if ( this.currentTab ) {
+			
+			this.currentTab.tabButton.selected = false;
+			this.currentTab.tabButton.enabled = true;
+			
+			if ( this.currentTab.preserve ) {
+				this.currentTab.tabDO.visible = false;
+			} else {
+				this.targetDO.removeChild( this.currentTab.tabDO );
+				this.currentTab.tabDO = null;
+			}
+			
+			this.currentTab = null;
+			
+		}
+		
+	}
+	
+	/**
+	 * Clean up tab references
+	 */
+	public function destroy () : void {
+		
+		for (var tab : Object in this.tabsToTabVOs ) {
+			delete this.tabsToTabVOs[ tab ];
+		}
+		
+	}
+	
+	/**
+	 * Get tab Vo by title
+	 */
+	private function getTabVoByTitle ( title : String ) : TabVO {
+		return ArrayUtil.getElementByPropertyValue( this.tabs, "title", title );
+	}
+	
+	private function addTabDO ( tab : DisplayObject ) : void {
+		
+	}
+	
+	private function addTabClass ( tabClass : Class ) : void {
+		
+	}
+	
+	
+	private function onTabNavigatorClick ( event : MouseEvent ) : void {
+		
+		if ( event.target is Button ) {
+			this.openTab( Button( event.target ).label );
+		}
+		
+	}
+	
+}
+	
+}
+import fl.controls.Button;
+import flash.display.DisplayObject;
+
+/**
+ * Tab VO
+ */
+class TabVO {
+	
+	/** params */
+	public var params : Array;
+	
+	/** tabButton */
+	public var tabButton 	: Button;
+	
+	/** preserve */
+	public var preserve 	: Boolean;
+	
+	/** title */
+	public var title 		: String;
+		
+	/** tab */
+	public var tabClass 	: Class;
+	
+	/** Tab DO */
+	public var tabDO		: DisplayObject;
+	
+	/**
+	 * Class constructor
+	 */
+	public function TabVO ( title : String, tabClass : Class, preserve : Boolean = true, params : Array = null ) {
+		this.params = params;
+		this.preserve = preserve;
+		this.title = title;
+		this.tabClass = tabClass;
+	}
+	
+}

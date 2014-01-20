@@ -1,0 +1,50 @@
+package ucc.operation {
+	
+/**
+ * Operation state
+ * 
+ * @version $Id$
+ */
+public class OperationState {
+
+	/** Idle */
+	public static const IDLE 		: OperationState = new OperationState( "IDLE" );
+	
+	/** Completed */
+	public static const COMPLETED 	: OperationState = new OperationState( "COMPLETED" );
+	
+	/** Running */
+	public static const RUNNING 	: OperationState = new OperationState( "RUNNING" );
+	
+	/** Paused */
+	public static const PAUSED		: OperationState = new OperationState( "PAUSED" );
+	
+	/** Pausing */
+	public static const PAUSING		: OperationState = new OperationState( "PAUSING" );
+	
+	/** Stopped */
+	public static const STOPPED 	: OperationState = new OperationState( "STOPPED" );
+	
+	/** Failed */
+	public static const FAILED 		: OperationState = new OperationState( "FAILED" );
+	
+	/** Internal type */
+	private var type : String;
+	
+	/**
+	 * Constructor
+	 */
+	public function OperationState( type : String ) {
+		this.type = type;
+	}
+	
+	/**
+	 * To string representation
+	 */
+	public function toString() : String {
+		return this.type;
+	}
+
+}
+
+}

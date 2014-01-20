@@ -1,0 +1,141 @@
+package ucc.util  {
+	import flash.system.ApplicationDomain;
+	import flash.utils.getDefinitionByName;
+	
+/**
+ * Class utils
+ *
+ * @version $Id: ClassUtil.as 1 2013-01-03 11:14:03Z rytis.alekna $
+ */
+public class ClassUtil {
+	
+	/**
+	 * Class constructor
+	 */
+	public function ClassUtil () {
+		
+	}
+	
+	/**
+	 * Get definitions by class name. Class name don't need to be fully qualified - those classes that are withing package will be also returned
+	 * @param	className
+	 * @param	applicationDomain	ApplicationDomain. Optional. If not privided, ApplicationDomain.currentDomain is used
+	 * @return	Vector.<Class> with mathed class definitions
+	 */
+	public static function getDefinitionsByShortName ( className : String, applicationDomain : ApplicationDomain = null ) : Vector.<Class> {
+		
+		if ( !applicationDomain ) {
+			applicationDomain = ApplicationDomain.currentDomain;
+		}
+		
+		var retVal : Vector.<Class> = new Vector.<Class>();
+		
+		var allDefinitions	: Vector.<String> = applicationDomain.getQualifiedDefinitionNames();
+		
+		var lastIndex : int;
+		
+		for each( var fullClassName : String in allDefinitions ) {
+			if ( ( ( lastIndex = fullClassName.lastIndexOf( className ) ) > -1 ) && ( lastIndex == ( fullClassName.length - className.length ) ) ) {
+				retVal.push( getDefinitionByName( fullClassName ) as Class );
+			}
+		}
+		
+		return retVal;
+		
+	}
+	
+	/**
+	 * Get definitions by mask
+	 * @param	mask	wildcards: * - any symbol, % - numerics (result is sorted by name)
+	 * @param	applicationDomain	ApplicationDomain. Optional. If not privided, ApplicationDomain.currentDomain is used
+	 * @return
+	 */
+	public static function getDefinitionsByMask ( mask : String, applicationDomain : ApplicationDomain = null ) : Vector.<Class> {
+		
+		if ( !applicationDomain ) {
+			applicationDomain = ApplicationDomain.currentDomain;
+		}
+		
+		return getDefinitionsByRegExp( new RegExp( "^" + mask.replace( "*", ".*" ).replace( "%", "[0-9]+" ) + "$" ), applicationDomain );
+	}
+	
+	/**
+	 * Get definitions by regexp
+	 * @param	regExp
+	 * @param	applicationDomain	ApplicationDomain. Optional. If not privided, ApplicationDomain.currentDomain is used
+	 * @return	Vector.<Class> with mathed class definitions
+	 */
+	public static function getDefinitionsByRegExp ( regExp : RegExp, applicationDomain : ApplicationDomain = null ) : Vector.<Class> {
+		
+		if ( !applicationDomain ) {
+			applicationDomain = ApplicationDomain.currentDomain;
+		}
+		
+		var retVal : Vector.<Class> = new Vector.<Class>();
+		
+		var allDefinitions	: Vector.<String> = applicationDomain.getQualifiedDefinitionNames();
+		
+		for each( var fullClassName : String in allDefinitions ) {
+			if ( fullClassName.match( regExp ).length > 0 ) {
+				retVal.push( getDefinitionByName( fullClassName ) as Class );
+			}
+		}
+		
+		return retVal;
+		
+	}
+	
+	/**
+	 * Creates an instance of the given class and passes the arguments to
+	 * the constructor.
+	 *
+	 * TODO find a generic solution for this. Currently we support constructors
+	 * with a maximum of 10 arguments.
+	 *
+	 * @param clazz the class from which an instance will be created
+	 * @param args the arguments that need to be passed to the constructor
+	 */
+	public static function newInstance(clazz:Class, args:Array=null):* {
+		var result:*;
+		var a:Array = (args == null) ? [] : args;
+
+		switch (a.length) {
+			case 1:
+				result = new clazz(a[0]);
+				break;
+			case 2:
+				result = new clazz(a[0], a[1]);
+				break;
+			case 3:
+				result = new clazz(a[0], a[1], a[2]);
+				break;
+			case 4:
+				result = new clazz(a[0], a[1], a[2], a[3]);
+				break;
+			case 5:
+				result = new clazz(a[0], a[1], a[2], a[3], a[4]);
+				break;
+			case 6:
+				result = new clazz(a[0], a[1], a[2], a[3], a[4], a[5]);
+				break;
+			case 7:
+				result = new clazz(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+				break;
+			case 8:
+				result = new clazz(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
+				break;
+			case 9:
+				result = new clazz(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8]);
+				break;
+			case 10:
+				result = new clazz(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9]);
+				break;
+			default:
+				result = new clazz();
+		}
+
+		return result;
+	}	
+}
+	
+}

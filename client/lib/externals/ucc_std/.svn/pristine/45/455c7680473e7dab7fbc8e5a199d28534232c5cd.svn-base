@@ -1,0 +1,19 @@
+package ucc.operation.util  {
+	
+/**
+ * Operation logger. Logs all events
+ *
+ * @version $Id$
+ */
+public class OperationLogger {
+	
+	/**
+	 * Class constructor
+	 */
+	public function OperationLogger () {
+		
+	}
+	
+}
+	
+}

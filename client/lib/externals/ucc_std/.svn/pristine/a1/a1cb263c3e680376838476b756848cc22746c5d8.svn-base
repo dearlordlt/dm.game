@@ -1,0 +1,69 @@
+package ucc.logging  {
+	import ucc.logging.client.LoggingClient;
+	import ucc.util.sprintf;
+	
+/**
+ * Logger utility
+ *
+ * @version $Id$
+ */
+public class Logger {
+	
+	/** Logger level DEBUG */
+	public static const LEVEL_DEBUG 	: String = "DEBUG";
+	
+	/** Logger level INFO */
+	public static const LEVEL_INFO 		: String = "INFO";
+	
+	/** Logger level WARN */
+	public static const LEVEL_WARN 		: String = "WARN";
+	
+	/** Logger level ERROR */
+	public static const LEVEL_ERROR 	: String = "ERROR";
+	
+	/** Logger level FATAL */
+	public static const LEVEL_FATAL 	: String = "FATAL";
+	
+	/** Levels, in increasement */
+	private static var levels 			: Array = [Logger.LEVEL_DEBUG, Logger.LEVEL_INFO, Logger.LEVEL_WARN, Logger.LEVEL_ERROR, Logger.LEVEL_FATAL];
+	
+	/** Minimum level */
+	public static var minLevel			: String = Logger.LEVEL_DEBUG;
+	
+	/** Ide trace is enabled? */
+	public static var ideTraceEnabled 	: Boolean = true;
+	
+	/** Logger client to use */
+	public static var client 			: LoggingClient;
+	
+	
+	/**
+	 * Trace message
+	 * 
+	 * @param	message message to trace
+	 * @param	level debug level
+	 */
+	public static function log( message : *, level : String = Logger.LEVEL_INFO ) : void {
+		
+		// Check min level
+		if( Logger.levels.indexOf( level ) >= Logger.levels.indexOf( Logger.minLevel ) ) {
+		
+			// If having client
+			if( Logger.client ) {
+				Logger.client.output( message, level );
+			} else {
+				DefaultTracer.log( "[" + level + "]: " + message );
+			}
+
+		}
+	}
+	
+}
+
+}
+
+internal class DefaultTracer {
+	public static function log ( message : * ) : void {
+		trace( message );
+	}
+}

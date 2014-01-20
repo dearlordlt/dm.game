@@ -1,0 +1,29 @@
+package ucc.logging.client  {
+	import com.demonsters.debugger.MonsterDebugger;
+	import ucc.util.sprintf;
+	
+/**
+ * Monster debugger client
+ *
+ * @version $Id$
+ */
+public class MonsterDebuggerClient implements LoggingClient {
+	
+	/**
+	 * Class constructor
+	 */
+	public function MonsterDebuggerClient () {
+		
+	}
+
+	/**
+	 *	@inheritDoc
+	 */
+	public function output ( message : String ,  level : String ) : void {
+		MonsterDebugger.log( sprintf( "Log(%s): %s", level, message ) )
+		trace( sprintf( "Log(%s): %s", level, message ) );
+	}
+	
+}
+	
+}

@@ -1,0 +1,125 @@
+package ucc.ui.window {
+	
+import flash.display.DisplayObjectContainer;
+import flash.display.Sprite;
+import flash.errors.IllegalOperationError;
+import flash.events.MouseEvent;
+import flash.geom.Point;
+import org.as3commons.reflect.MetadataUtils;
+import ucc.error.UnsupportedOperationException;
+import ucc.util.ObjectUtil;
+	
+/**
+ * Native window base impl
+ * 
+ * @version $Id$
+ */
+[Event(name="ucc.ui.window.WindowEvent.CLOSE", type="ucc.ui.window.WindowEvent")]
+[Event(name="ucc.ui.window.WindowEvent.WINDOW_FOCUS_IN", type="ucc.ui.window.WindowEvent")]
+public class NativeWindowBase extends Sprite implements NativeWindow {
+	
+	/** Name of "Single" metadata */
+	private static const SINGLE			: String = "Single";
+	
+	/** Updateable */
+	private static const UPDATEABLE		: String = "Updatable";
+	
+	/**
+	 * Class constructor
+	 * ATTENTION!!!: In subclasses always assign constructor parameters to class members BEFORE calling constructor 
+	 * because superconstructor calls methods #draw() and #initialize() where can be some of the logic based on constructor params.
+	 * // TODO: fix this issue by calling #draw() and #initialize() on next frame
+	 */
+	public function NativeWindowBase ( parent : DisplayObjectContainer = null ) {
+		WindowsManager.getInstance().addWindowToManager( this, parent );
+		this.addEventListener( MouseEvent.MOUSE_DOWN, this.onMouseDown );
+	}
+	
+	/**
+	 * Get window id
+	 */
+	public function get id() : String {
+		return ObjectUtil.getClassName( this );
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function isCloseable () : Boolean {
+		return true;
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function isModal () : Boolean {
+		return false;
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function isDraggable () : Boolean {
+		return true;
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function destroy () : void {
+		this.dispatchEvent( new WindowEvent( WindowEvent.CLOSE ) );
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function mustBeSingle () : Boolean {
+		return Boolean( MetadataUtils.findClassMetadata( ObjectUtil.getClass( this ), SINGLE ) );
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function isUpdateable () : Boolean {
+		return Boolean( MetadataUtils.findClassMetadata( ObjectUtil.getClass( this ), UPDATEABLE ) );
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function update (...data) : void {
+		throw new UnsupportedOperationException( "Update functionality not implemented" );
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function initialize () : void {
+		// override this method and put all bussines initialization logic here but never call this method directly
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function draw () : void {
+		// draw gui logic
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public function getInitialPosition () : Point {
+		return null;
+	}
+	
+	/**
+	 * On window focus
+	 * @param	event
+	 */
+	private function onMouseDown ( event : MouseEvent ) : void {
+		this.dispatchEvent( new WindowEvent( WindowEvent.WINDOW_FOCUS_IN ) );
+	}
+	
+}
+
+}

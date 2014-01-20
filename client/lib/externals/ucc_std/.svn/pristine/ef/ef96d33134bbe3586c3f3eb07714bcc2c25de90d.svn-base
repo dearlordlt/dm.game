@@ -1,0 +1,14 @@
+package   {
+	import ucc.i18n.Localization;
+	
+/**
+ * Translation shortcut
+ *
+ * @version $Id$
+ */
+public function _( msg : String, ... params ) : String {
+	return Localization.getInstance().getLocalizedString.apply( null, [ msg ].concat( params ) );
+}
+
+	
+}

@@ -1,0 +1,48 @@
+package ucc.util  {
+	import flash.display.Sprite;
+	import flash.events.Event;
+	import ucc.data.event.FrameImpulse;
+	
+/**
+ * Function utils
+ *
+ * @version $Id$
+ */
+public class FunctionUtil {
+	
+	/** Enter frame beacon */
+	private static const enterFrameBeacon  : Sprite = new Sprite();
+	
+	/**
+	 * Call function on next enter frame event once
+	 * @param	callback
+	 * @param	...args
+	 */
+	public static function callOnNextEnterFrame ( callback : Function, ...args ) : void {
+		
+		var listenerFunction : Function = function ( event : Event ) : void {
+			FrameImpulse.getInstance().removeEventListener( Event.ENTER_FRAME, arguments.callee );
+			callback.apply( null, args );
+		}
+		
+		FrameImpulse.getInstance().addEventListener( Event.ENTER_FRAME, listenerFunction );
+	}	
+	
+	/**
+	 * Call function on next enter frame event once with priority
+	 * @param	callback
+	 * @param	...args
+	 */
+	public static function callOnNextEnterFrameWithPriority ( callback : Function, priority : int, ...args ) : void {
+		
+		var listenerFunction : Function = function ( event : Event ) : void {
+			enterFrameBeacon.removeEventListener( Event.ENTER_FRAME, arguments.callee );
+			callback.apply( null, args );
+		}
+		
+		enterFrameBeacon.addEventListener( Event.ENTER_FRAME, listenerFunction, false, priority );
+	}
+	
+}
+	
+}
