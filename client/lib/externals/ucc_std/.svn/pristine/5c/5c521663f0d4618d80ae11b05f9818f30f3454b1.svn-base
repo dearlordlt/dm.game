@@ -1,0 +1,412 @@
+package ucc.ui.dataview  {
+	import fl.controls.DataGrid;
+	import fl.controls.dataGridClasses.DataGridColumn;
+	import fl.controls.List;
+	import fl.controls.SelectableList;
+	import fl.core.UIComponent;
+	import fl.data.DataProvider;
+	import flash.errors.IllegalOperationError;
+	import org.as3commons.lang.ClassUtils;
+	import ucc.data.service.Service;
+	import ucc.error.IllegalArgumentException;
+	import ucc.error.IllegalStateException;
+	import ucc.logging.Logger;
+	import ucc.util.ClassUtil;
+	
+/**
+ * Data view builder
+ *
+ * @version $Id$
+ */
+public class DataViewBuilder {
+	
+	/** Selectable list */
+	protected var selectableList 			: SelectableList;
+	
+	/** Data service */
+	protected var service 					: Service;
+	
+	/** Last result */
+	protected var lastResult				: Array;
+	
+	/** Prepended data */
+	protected var prependedData				: Array = [];
+	
+	/** Prepended data */
+	protected var apendedData				: Array = [];
+	
+	/** 
+	 * Raw data transform function ( (Array) => Array )
+	 * If it is set, received data will be passed throught this function and a return value would be used to creating data provider
+	 */
+	protected var rawDataTransformFunction	: Function;
+	
+	/** Selection data filter */
+	protected var selectionDataFilter 		: Object;
+	
+	/** Filter data filter */
+	protected var dataFilter 				: Object;
+	
+	/** Does this list belong to ComboBox? */
+	protected var listParent 				: UIComponent;
+	
+	/**
+	 * Data view builder contructor
+	 * @param	selectableList	any SelectableList implementation. If you want to set data to ComboBox, pass ComboBox property "dropdown".
+	 */
+	public function DataViewBuilder ( selectableList : SelectableList, listParent : UIComponent = null ) {
+		
+		this.listParent = listParent;
+		
+		if ( !selectableList ) {
+			throw new IllegalArgumentException( "ucc.ui.dataview.DataViewBuilder.DataViewBuilder() : parameter selectableList must be not null!" );
+		}
+		
+		this.selectableList = selectableList;
+	}
+	
+	/**
+	 * Add service call
+	 * @param	service
+	 * @return	reference to self
+	 */
+	public function setService( service : Service ) : DataViewBuilder {
+		this.service = service;
+		this.service.addResponders( this.onResult );
+		return this;
+	}
+	
+	/**
+	 * Set data transformer function.
+	 * @param	transformerFunction		Must take exactly one parameter (Array) and retrun array of transformed data
+	 * @return
+	 */
+	public function setDataTransformer ( transformerFunction : Function ) : DataViewBuilder {
+		if ( ( transformerFunction != null ) && transformerFunction.length == 1 ) {
+			this.rawDataTransformFunction = transformerFunction;
+		} else {
+			throw new IllegalArgumentException( "Data transformer is null or doesn\'t accept required number of parameters!" )
+		}
+		return this;
+	}
+	
+	/**
+	 * Refresh data from the same service call
+	 * @return
+	 */
+	public function refresh () : DataViewBuilder {
+		if ( !this.service ) {
+			throw new IllegalStateException( "ucc.ui.dataview.DataViewBuilder.refresh() : data can't be refreshed when service is not set!" );
+		}
+		this.service.call();
+		return this;
+	}
+	
+	/**
+	 * Add column
+	 * @param	column
+	 * @return
+	 */
+	public function addColumn ( column : DataGridColumn ) : DataViewBuilder {
+		if ( !this.selectableList is DataGrid ) {
+			// TODO: implement column conversion to List params
+			if ( this.selectableList is List ) {
+				List( this.selectableList ).labelFunction = column.labelFunction;
+				// List( this.selectableList ).labelField = column.dataField;
+			}
+			
+		} else {
+			( this.selectableList as DataGrid ).addColumn( column );
+		}
+		return this;
+	}
+	
+	/**
+	 * Create simple column. For advanced column use #addColumn() with ColumnFactoryClass
+	 * @param	dataField
+	 * @param	headerText
+	 * @param	width
+	 * @return	self
+	 */
+	public function createColumn ( dataField : String, headerText : String, width : Number = NaN ) : DataViewBuilder {
+		
+		var column : DataGridColumn = new DataGridColumn( dataField );
+		
+		column.headerText = headerText;
+		if ( width ) {
+			column.width = width;
+		}
+		
+		if ( this.selectableList is List ) {
+			List( this.selectableList ).labelFunction = column.labelFunction;
+			List( this.selectableList ).labelField = column.dataField;
+		} else {
+			( this.selectableList as DataGrid ).addColumn( column );
+		}
+		
+		
+		return this;
+	}
+	
+	/**
+	 * Get last service call result
+	 * @return
+	 */
+	public function getLastResult () : Object {
+		return this.lastResult;
+	}
+	
+	/**
+	 * Data result handler
+	 * @param	result
+	 */
+	protected function onResult ( result : Array ) : void {
+		if ( typeof( result ) == "object" ) {
+			
+			result = this.addDefaultData( result );
+			
+			this.lastResult = result;
+			
+			var data : Array;
+			
+			if ( this.rawDataTransformFunction ) {
+				data = this.rawDataTransformFunction( result as Array );
+			} else {
+				data = result as Array
+			}
+			
+			this.selectableList.dataProvider = new DataProvider( data );
+			
+			// if it is drop down of ComboBox - refresh
+			if ( this.listParent ) {
+				this.listParent.validateNow();
+			}
+			
+			if ( this.selectionDataFilter ) {
+				this.selectItemByPropertyValue( this.selectionDataFilter );
+			}
+			
+			if ( this.dataFilter ) {
+				this.filterListByEquality( this.dataFilter );
+			}
+			
+			
+		} else {
+			Logger.log( "ucc.ui.dataview.DataViewBuilder.onResult() : No meaningfull data received from service!" );
+		}
+	}
+	
+	/**
+	 * Add default data
+	 * @param	data
+	 * @return
+	 */
+	protected function addDefaultData ( data : Array ) : Array {
+		return this.prependedData.concat( data.concat( this.apendedData ) );
+	}
+	
+	/**
+	 * Select item by property value
+	 * @param	dataFilter	a generic object which properties are compared with items properties in data provider
+	 * @return
+	 */
+	public function selectItemByPropertyValue ( selectionDataFilter : Object ) : DataViewBuilder {
+		
+		this.selectionDataFilter = selectionDataFilter;
+		
+		if ( this.lastResult ) {
+			
+			var filteredItems : Array = [];
+			
+			var iteration : int;
+			
+			var item : Object;
+			
+			if ( this.selectionDataFilter == null ) {
+				this.selectableList.selectedItems = [];
+				return this;
+			}
+			
+			for ( var prop : String in this.dataFilter ) {
+				
+				// all this stuff is performance optimisation
+				if ( iteration == 0 ) {
+					for each( item in this.selectableList.dataProvider.toArray() ) {
+						if ( item[prop] == this.selectionDataFilter[prop] ) {
+							filteredItems.push( item );
+						}
+					}
+				} else {
+					
+					if ( filteredItems.length > 0 ) {
+						
+						var filteredItemsCopy : Array = filteredItems.concat();
+						filteredItems.length = 0;
+						
+						for each( item in filteredItemsCopy ) {
+							if ( item[prop] == this.selectionDataFilter[prop] ) {
+								filteredItems.push( item );
+							}
+						}
+						
+					} else {
+						break;
+					}
+					
+				}
+				
+				iteration++;
+				
+			}
+			
+			if ( filteredItems.length > 0 ) {
+				if ( this.selectableList.allowMultipleSelection ) {
+					this.selectableList.selectedItems = filteredItems;
+				} else {
+					this.selectableList.selectedItem = filteredItems[0];
+				}
+				
+			}
+			
+		}
+		
+		return this;
+		
+	}
+	
+	/**
+	 * Filter list by string
+	 * @param	dataField
+	 * @param	searchTermString
+	 * @param	mask
+	 * @return
+	 */
+	public function filterListByString ( dataField : String, searchTermString : String, regExp : Boolean = false ) : DataViewBuilder {
+		
+		var fullDataProvider 		: DataProvider = new DataProvider( this.lastResult ).clone();
+		
+		var filteredDataProvider	: DataProvider = new DataProvider();
+		
+		var searchTerm : RegExp;
+		
+		if ( regExp ) {
+			// searchTerm = new RegExp( "^" + searchTermString.replace( "*", ".*" ).replace( "%", "[0-9]+" ) + "$", "i" );
+			searchTerm = new RegExp( searchTermString );
+			for each( var item : Object in fullDataProvider.toArray() ) {
+				if ( searchTerm.test( String( item[ dataField ] ) ) ) {
+					filteredDataProvider.addItem( item );
+				}
+			}
+			
+		} else {
+			for each( var item : Object in fullDataProvider.toArray() ) {
+				if ( String( item[ dataField ] ).indexOf( searchTermString ) >= 0 ) {
+					filteredDataProvider.addItem( item );
+				}
+			}
+		}
+		
+		
+		
+		this.selectableList.dataProvider = filteredDataProvider;
+		return this;
+		
+	}
+	
+	public function filterListByEquality ( dataFilter : Object ) : DataViewBuilder {
+		
+		this.dataFilter = dataFilter;
+		
+		if ( this.lastResult ) {
+			
+			var filteredItems : Array = [];
+			
+			var iteration : int;
+			
+			var item : Object;
+			
+			var currentData	: Array = this.lastResult.concat();
+			
+			// if data filter is null than it mean there is no filter so all original item should be returned!
+			if ( this.dataFilter == null ) {
+				this.selectableList.dataProvider = new DataProvider( currentData );
+				return this;
+			}
+			
+			for ( var prop : String in this.dataFilter ) {
+				
+				// all this stuff is performance optimisation
+				if ( iteration == 0 ) {
+					for each( item in currentData ) {
+						if ( item[prop] == this.dataFilter[prop] ) {
+							filteredItems.push( item );
+						}
+					}
+				} else {
+					
+					if ( filteredItems.length > 0 ) {
+						
+						var filteredItemsCopy : Array = filteredItems.concat();
+						filteredItems.length = 0;
+						
+						for each( item in filteredItemsCopy ) {
+							if ( item[prop] == this.dataFilter[prop] ) {
+								filteredItems.push( item );
+							}
+						}
+						
+					} else {
+						break;
+					}
+					
+				}
+				
+				iteration++;
+				
+			}
+			
+			if ( filteredItems.length > 0 ) {
+				this.selectableList.dataProvider = new DataProvider( filteredItems );
+			}
+			
+		}
+		
+		return this;
+		
+	}
+	
+	/**
+	 * Prepend data to list (for example default data)
+	 * @param	data
+	 * @return
+	 */
+	public function prependData ( data : Array ) : DataViewBuilder {
+		
+		this.prependedData = data.concat( this.prependedData );
+		
+		if ( this.lastResult ) {
+			this.selectableList.dataProvider = new DataProvider( this.prependedData.concat( this.lastResult.concat( this.apendedData ) ) );
+		}
+		
+		return this;
+	}
+	
+	/**
+	 * Prepend data to list (for example default data)
+	 * @param	data
+	 * @return
+	 */
+	public function apendData ( data : Array ) : DataViewBuilder {
+		
+		this.apendedData = data.concat( this.apendedData );
+		
+		if ( this.lastResult ) {
+			this.selectableList.dataProvider = new DataProvider( this.prependedData.concat( this.lastResult.concat( this.apendedData ) ) );
+		}
+		
+		return this;
+	}
+	
+}
+	
+}

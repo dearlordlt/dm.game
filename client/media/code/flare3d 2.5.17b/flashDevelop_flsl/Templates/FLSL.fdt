@@ -1,0 +1,12 @@
+
+use namespace flare;
+use namespace flare.transforms;
+use namespace flare.filters;
+
+param float4 color = float4( 1, 0, 0, 1 );
+
+technique main 
+{
+	output vertex = transform();
+	output fragment = color;
+}

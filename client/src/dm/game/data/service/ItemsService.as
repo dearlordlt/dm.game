@@ -43,6 +43,10 @@ public class ItemsService extends Service {
 		return createService( SERVICE_NAME + "hasMoreOrEqualItemsCondition", [avatarId, itemId, amount] );
 	}
 	
+	public static function executeDeal( myId : int, partnerId : int, data : Object ) : Service {
+		return createService( SERVICE_NAME + "executeDeal", [myId, partnerId, data] );
+	}
+	
 }
 
 }

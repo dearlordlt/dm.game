@@ -11,15 +11,28 @@ public class SocialCapitalService extends Service {
 		
 	/** SERVICE_NAME */
 	public static const SERVICE_NAME : String = "dm.SocialCapital.";
+		
+	/** MESSAGE */
+	public static const MESSAGE : String = "message";
+		
+	/** TRADE */
+	public static const TRADE : String = "trade";
+		
+	/** CHEAT */
+	public static const CHEAT : String = "cheat";
 	
 	public static function logInteraction ( avatarId : int, toAvatarId : int, interactionType : String ) : Service {
 		
-		if ( ( ['message','trade','cheat'] as Array ).indexOf( interactionType.toLowerCase() ) == -1 ) {
+		if ( ( [MESSAGE, TRADE, CHEAT] as Array ).indexOf( interactionType.toLowerCase() ) == -1 ) {
 			throw new IllegalArgumentException("Interaction type must be one of the provided values: 'message','trade','cheat'!");
 		}
 		
 		return createService( SERVICE_NAME + "logInteraction", [avatarId, toAvatarId, interactionType.toLowerCase()] );
 		
+	}
+	
+	public static function getAvatarSocialCapital ( avatarId : int ) : Service {
+		return createService( SERVICE_NAME + "getAvatarSocialCapital", [avatarId] );
 	}
 	
 }

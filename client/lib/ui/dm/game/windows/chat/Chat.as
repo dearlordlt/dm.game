@@ -11,9 +11,11 @@ import com.electrotank.electroserver5.api.PublicMessageEvent;
 import com.electrotank.electroserver5.api.PublicMessageRequest;
 import com.electrotank.electroserver5.user.User;
 import com.electrotank.electroserver5.zone.Room;
+import dm.game.data.service.SocialCapitalService;
 import dm.game.functions.ParameterizedCommand;
 import dm.game.managers.EsManager;
 import dm.game.managers.MyManager;
+import dm.game.util.AvatarUtil;
 import dm.game.windows.alert.Alert;
 import dm.game.windows.chat.command.AddFriendByNameCommand;
 import dm.game.windows.chat.command.QueryAvatarProfile;
@@ -666,6 +668,7 @@ public class Chat extends DmWindow {
 			if ( ( this.currentChannel is Room )  ) {
 				this.sendPublicMessage( input );
 			} else {
+				SocialCapitalService.logInteraction( MyManager.instance.avatar.id, User( this.currentChannel ).userVariableByName("avatar").value.getInteger("id"), SocialCapitalService.MESSAGE );
 				this.sendPrivateMessage( User( this.currentChannel ).userName, input );
 			}
 			
@@ -775,6 +778,7 @@ public class Chat extends DmWindow {
 		pm.userNames = [ username ];
 		pm.message = msg;
 		EsManager.instance.es.engine.send( pm );
+		
 	}
 	
 	private function onEnterKeyDown( event : Event ) : void {

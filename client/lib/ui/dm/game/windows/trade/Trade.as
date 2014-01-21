@@ -5,6 +5,7 @@ import com.electrotank.electroserver5.api.MessageType;
 import com.electrotank.electroserver5.api.PrivateMessageEvent;
 import com.electrotank.electroserver5.api.PrivateMessageRequest;
 import dm.game.data.service.AvatarService;
+import dm.game.data.service.SocialCapitalService;
 import dm.game.managers.EsManager;
 import dm.game.managers.MyManager;
 import dm.game.windows.confirm.Confirm;
@@ -103,11 +104,13 @@ public class Trade extends DmWindow {
 	}
 	
 	private function onNotCheated() : void {
-		new AMFPHP().xcall( "dm.Stats.reportTradeCheating", MyManager.instance.avatar.id, TradeManager.instance.currentPartnerId, 0 );
+		// new AMFPHP().xcall( "dm.Stats.reportTradeCheating", MyManager.instance.avatar.id, TradeManager.instance.currentPartnerId, 0 );
 	}
 	
 	private function onCheated() : void {
-		new AMFPHP().xcall( "dm.Stats.reportTradeCheating", MyManager.instance.avatar.id, TradeManager.instance.currentPartnerId, 1 );
+		SocialCapitalService.logInteraction( TradeManager.instance.currentPartnerId, MyManager.instance.avatar.id, SocialCapitalService.CHEAT )
+			.call();
+		// new AMFPHP().xcall( "dm.Stats.reportTradeCheating", MyManager.instance.avatar.id, TradeManager.instance.currentPartnerId, 1 );
 	}
 	
 	private function onTradeCancel() : void {

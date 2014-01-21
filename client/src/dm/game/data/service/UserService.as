@@ -1,4 +1,5 @@
 package dm.game.data.service {
+	import adobe.utils.CustomActions;
 	import ucc.data.service.Service;
 	
 
@@ -79,6 +80,14 @@ public class UserService extends Service {
 	 */
 	public static function getAllSchools () : Service {
 		return createService( SERVICE_NAME + "getAllSchools" );
+	}
+	
+	public static function getUserAvatars ( userId : int ) : Service {
+		return createService( SERVICE_NAME + "getUserAvatars", [userId] );
+	}
+	
+	public static function getAllUsers () : Service {
+		return createService( SERVICE_NAME + "getAllUsers" );
 	}
 	
 }

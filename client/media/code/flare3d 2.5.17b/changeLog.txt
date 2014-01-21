@@ -1,0 +1,78 @@
+Flare3D 2.5.17b
+
+	Library:
+	
+	* fixed - mouse out event had null surface object.
+	* fixed - some flsl optimizations that produced wrong results.
+	* fixed - bug loading normals maps from f3d's.
+	* fixed - bugs in skin modifier.
+	* added - animation complete event on Particles3D.
+	* added - new post fx and rotateTextureFilter examples.
+	* improved - a few materials performance optimizations.
+	* improved - Mesh3DUtils.merge now takes layer property to sort the objects when possible.
+	* improved - Surface3D.polys for surface instances.
+	* improved - ray and sphere collisions.
+	* improved - general optimizations and memory managment.
+	* improved - split process of skinning surfaces.
+	
+	IDE:
+	
+	* added - advanced options for blending, cull face and depth, in Shader3D materials.
+	* added - menu File -> Save, Save As, Save Selected As.
+	* added - right click on hierarhcy objects -> Save Selected As.... that allows to export specific objects from the scene.
+	* added - menu File -> Screenshot. takes a snapshot of the current viewport buffer and saves it to a png file.
+	* added - cut, paste, duplicate, delete.
+	* added - double click to open/close in hierarhcy panel.
+	* added - show in hierarhcy on right click.
+	* added - menu Windows / Workspaces / Reset to reset to the original workspace.
+	* fixed - transparent property not being saved.
+	* fixed - issues loading reflection cubempa and filp normals filters in the library.
+	* fixed - import issues with f3d models with normal maps.
+	* fixed - visible property was taking too long.
+	* fixed - specular values for f3d models. the value is adjusted to match new params.
+	* fixed - some bugs saving f3d and colalda files with skin.
+	* improved - collada absolute texture paths now look for the textures in the same folder as de DAE file.
+	* improved - lots of general gui improvements and optimizations.
+	* improved - loading times.
+	
+Flare3D 2.5.16c
+	
+	Library:
+	
+	* added - Particles3D reverse:Boolean mode.
+	* added - Particles3D frames:Point property to define the number of frames of the texture in x and y axis.
+	* added - Particles3D randomFrame property allowing to randomly select a frame when frames property is set.
+	* fixed - delay property in Particles3D.
+	* fixed - some issues with sorting on Particles3D.
+	* fixed - error when disposing Pivot3D.
+	* fixed - Device3D.trianglesDrawn property.
+	* fixed - range error when removing Pivot3D in complete event (need more testing, but appears to be ok now).
+	* fixed - bug with directional lights.
+	* fixed - bug in Surface3D with the vector parameter of addVertexData.
+	* fixed - general minor issues.
+	
+	IDE:
+	
+	* added - visible property in all pivots.
+	* added - layer property in all pivots.
+	* added - particles properties to match the library new properties.
+	* fixed - general minor issues.
+	
+Flare3D 2.5.15
+
+	* added - Particles3D class (beta).
+	* added - #for statements for static loops in FLSL. (beta).
+	* added - const casting in FLSL. Now is possible to cast a value to a const() to precalculate values outside the shader. for ex: const( i * 0.2 ); will be evaluated outside the shader by the compiler.
+	* fixed - components are removed before disposing the Pivot3D.
+	* fixed - errors with mouse and ray collisions.
+	* fixed - errors when using specular + self illumination filters.
+	* fixed - errors with texture options (wrap/filter/mip) in QuadMaterial.
+	* changed - Input3D gets reset when the stage dispatch deactivate event.
+	* fixed - other minor issues here and there.
+
+Flare3D 2.5.14
+
+	* added - Full ATF support for rgba, compressed, compressed with alpha and cubemaps.
+	* added - includeChildren parameter in Mesh3DUtils.merge. By default is false.
+	* fixed - Bug when using mouse events in cloned objects.
+	* fixed - loaded property in Flare3DLoader.

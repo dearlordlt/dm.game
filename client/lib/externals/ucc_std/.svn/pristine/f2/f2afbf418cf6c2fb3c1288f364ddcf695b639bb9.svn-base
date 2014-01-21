@@ -1,0 +1,394 @@
+package ucc.ui.window  {
+	import com.greensock.TimelineLite;
+	import flash.display.DisplayObject;
+	import flash.display.DisplayObjectContainer;
+	import flash.display.Stage;
+	import flash.events.Event;
+	import flash.events.EventDispatcher;
+	import flash.events.MouseEvent;
+	import flash.geom.Point;
+	import flash.geom.Rectangle;
+	import flash.utils.Dictionary;
+	import flash.utils.setTimeout;
+	import org.as3commons.lang.ArrayUtils;
+	import org.as3commons.lang.ClassNotFoundError;
+	import org.as3commons.lang.ClassUtils;
+	import org.as3commons.reflect.MetadataUtils;
+	import org.as3commons.reflect.Parameter;
+	import org.as3commons.reflect.Type;
+	import ucc.error.IllegalArgumentException;
+	import ucc.util.DelayedCallUtil;
+	import ucc.util.MathUtil;
+	import ucc.util.ObjectUtil;
+	
+/**
+ * Windows manager
+ *
+ * @version $Id$
+ */
+[Event(name="ucc.ui.window.WindowEvent.WINDOW_FOCUS_OUT", type="ucc.ui.window.WindowEvent")]
+[Event(name="ucc.ui.window.WindowEvent.WINDOW_FOCUS_IN", type="ucc.ui.window.WindowEvent")]
+public class WindowsManager extends EventDispatcher {
+	
+	/** Singleton instance */
+	private static var instance 		: WindowsManager;
+	
+	/** Windows */
+	protected var windows				: Array = [];
+	
+	/** Windows managers */
+	protected var windowsManagers		: Dictionary = new Dictionary();
+	
+	/** Default parent (if non is provided) */
+	protected var defaultParent			: DisplayObjectContainer;
+	
+	/**
+	 * Get singleton instance of class
+	 * @return 	singleton instance	WindowsManager
+	 */
+	public static function getInstance () : WindowsManager {
+		return WindowsManager.instance ? WindowsManager.instance : ( WindowsManager.instance = new WindowsManager() );
+	}
+	
+	/**
+	 * Class constructor
+	 */
+	public function WindowsManager () {
+		this.windowsManagers[ DisplayObject ] = this.manageDisplayObjectNativeWindow;
+	}
+	
+	/**
+	 * Set default parent display object container
+	 */
+	public function setDefaultParentContainer ( containerDO : DisplayObjectContainer ) : void {
+		if ( this.defaultParent ) {
+			this.defaultParent.stage.removeEventListener( MouseEvent.MOUSE_DOWN, this.onStageMouseDown );
+		}
+		this.defaultParent = containerDO;
+		this.defaultParent.stage.addEventListener( MouseEvent.MOUSE_DOWN, this.onStageMouseDown );
+	}
+	
+	/**
+	 * Get default parent container
+	 */
+	public function getDefaultParentContainer () : DisplayObjectContainer {
+		return this.defaultParent;
+	}
+	
+	/**
+	 * Creates window
+	 * @param	windowClass
+	 * @param	parent	this param is not pased to window constructor!
+	 * @param	params
+	 * @return
+	 */
+	public function createWindow ( windowClass : Class, parent : * = null, params : Array = null ) : NativeWindow {
+		if ( ClassUtils.isImplementationOf( windowClass, NativeWindow ) ) {
+			
+			var window	: NativeWindow;
+			
+			if ( !parent ) {
+				parent = this.defaultParent;
+			}
+			
+			if ( MetadataUtils.findClassMetadata( windowClass, "Single" ) ) {
+				if ( window = this.getWindowByClass( windowClass ) ) {
+					if ( window.isUpdateable() ) {
+						window.update.apply( null, params );
+						this.getManagingMethodForWindow( window ).apply( null, [ window, parent ] );
+					} else {
+						window.destroy();
+						window = null;
+					}
+				}
+			}
+			
+			if ( !window ) {
+				// TODO: finish reflection
+				// on, no refrelction here
+				var classConstructorParameters : Array = Type.forClass( windowClass ).constructor.parameters;
+				
+				var param 					: Parameter;
+				var useParentInConstructor 	: Boolean = false;
+				
+				for ( var i : String in classConstructorParameters ) {
+					
+					param = classConstructorParameters[ i ];
+					
+					if ( ( param.index == 0 ) && ClassUtils.isAssignableFrom( DisplayObjectContainer, param.type.clazz ) ) {
+						useParentInConstructor = true;
+						break;
+					}
+					
+				}
+				
+				if ( params && classConstructorParameters.length == ( params.length + 1 ) ) {
+					useParentInConstructor = true;
+				}
+				
+				// ok, if parent 
+				var paramsToPass : Array;
+				if ( useParentInConstructor ) {
+					
+					if ( params ) {
+						paramsToPass = ([ parent ]).concat( params );
+					} else {
+						paramsToPass = [ params ];
+					}
+					window = ClassUtils.newInstance( windowClass, paramsToPass );
+					
+				} else {
+					window = ClassUtils.newInstance( windowClass, params );
+				}
+				
+			}
+			
+			return window;
+			
+		} else {
+			throw new IllegalArgumentException( "ucc.ui.window.WindowsManager.createWindow() : passed class must be implementation of NativeWindow!" );
+		}
+		
+	}
+	
+	/**
+	 * Add window to manager (if it isn't already added)
+	 * @param	window
+	 */
+	public function addWindowToManager ( window : NativeWindow, parent : * = null, params : Array = null ) : void {
+		
+		if ( !parent ) {
+			parent = this.defaultParent;
+		}		
+		
+		if ( this.windows.indexOf( window ) == -1 ) {
+			
+			if ( window.mustBeSingle() ) {
+				
+				var existingWindow : NativeWindow;
+				
+				if ( existingWindow = this.getWindowByClass( ObjectUtil.getClass( window ) ) ) {
+					if ( existingWindow.isUpdateable() ) {
+						existingWindow.update.apply( null, params );
+						window = existingWindow;
+					} else {
+						existingWindow.destroy();
+						this.registerWindow( window );
+					}
+				} else {
+					this.registerWindow( window );
+				}
+			} else {
+				this.registerWindow( window );
+			}
+			
+			
+		}
+		
+		this.getManagingMethodForWindow( window )( window, parent );
+		
+	}
+	
+	/**
+	 * Register window
+	 * @param	window
+	 */
+	protected function registerWindow ( window : NativeWindow ) : void {
+		this.windows.push( window );
+		
+		if ( this.windows.length == 1 ) {
+			this.dispatchEvent( new WindowEvent( WindowEvent.WINDOW_FOCUS_IN ) );
+		}
+		
+		window.addEventListener( WindowEvent.CLOSE, this.onWindowClosed );
+		window.addEventListener( WindowEvent.WINDOW_FOCUS_IN, this.onWindowFocusIn );
+		// DelayedCallUtil.callLater( this.initWindow, window );
+		this.initWindow( window );
+	}
+	
+	/**
+	 * Init window
+	 * @param	window
+	 */
+	protected function initWindow ( window : NativeWindow ) : void {
+		window.draw();
+		window.initialize();
+	}
+	
+	/**
+	 * Remove window
+	 * @param	window
+	 */
+	protected function removeWindow ( window : NativeWindow ) : void {
+		ArrayUtils.removeItem( this.windows, window );
+		var windowDO : DisplayObject = ( window as DisplayObject );
+		if ( windowDO && windowDO.parent ) {
+			windowDO.parent.removeChild( windowDO );
+		}
+		
+		if ( this.windows.length == 0 ) {
+			this.dispatchEvent( new WindowEvent( WindowEvent.WINDOW_FOCUS_OUT ) );
+		}		
+		
+	}
+	
+	/**
+	 * On window closed
+	 * @param	event
+	 */
+	protected function onWindowClosed ( event : WindowEvent ) : void {
+		var window : NativeWindow = event.target as NativeWindow;
+		window.removeEventListener( WindowEvent.CLOSE, this.onWindowClosed );
+		this.removeWindow( window );
+	}
+	
+	/**
+	 * Get managing method for window
+	 * @return
+	 */
+	protected function getManagingMethodForWindow ( window : NativeWindow ) : Function {
+		
+		for ( var clazz : Object in this.windowsManagers ) {
+			if ( window is ( clazz as Class ) ) {
+				return this.windowsManagers[ clazz ];
+			}
+		}
+		
+		return null;
+		
+	}
+	
+	protected function manageDisplayObjectNativeWindow ( window : DisplayObject, parent : DisplayObjectContainer ) : void {
+		if ( window.parent == parent ) {
+			parent.setChildIndex( window, parent.numChildren - 1 );
+		} else {
+			window.addEventListener( Event.ADDED_TO_STAGE, this.onWindowAddedToStage );
+			parent.addChild( window );
+		}
+	}
+	
+	/**
+	 *	On stage mouse down
+	 */
+	protected function onStageMouseDown ( event : MouseEvent) : void {
+		
+		if ( event.target instanceof Stage ) {
+			// remove focus from curent textfield
+			( event.target as Stage ).focus = null;
+			this.dispatchEvent( new WindowEvent( WindowEvent.WINDOW_FOCUS_OUT ) );
+		} else {
+			this.dispatchEvent( new WindowEvent( WindowEvent.WINDOW_FOCUS_IN ) );
+		}
+		
+	}
+	
+	/**
+	 *	On window focus in
+	 */
+	protected function onWindowFocusIn ( event : WindowEvent ) : void {
+		this.dispatchEvent( event );
+	}
+	
+	/**
+	 * Get window by class
+	 * @param	clazz
+	 * @return	window or null if not found
+	 */
+	public function getWindowByClass ( clazz : Class ) : NativeWindow {
+		for each( var window : NativeWindow in this.windows ) {
+			if ( window is clazz ) {
+				return window;
+			}
+		}
+		
+		return null;
+		
+	}
+	
+	/**
+	 * Get window by class name
+	 * @param	class name
+	 * @return	window or null if not found
+	 */
+	public function getWindowByClassName ( className : String ) : NativeWindow {
+		
+		var clazz : Class;
+		
+		try {
+			clazz = ClassUtils.forName( className );
+		} catch ( error : ClassNotFoundError ) {
+			return null;
+		}
+		
+		for each( var window : NativeWindow in this.windows ) {
+			if (  window is clazz ) {
+				return window;
+			}
+		}
+		
+		return null;
+		
+	}
+	
+	/**
+	 * Get window by id
+	 * @param	id
+	 * @return	window or null if not found
+	 */
+	public function getWindowById ( id : String ) : NativeWindow {
+		for each( var window : NativeWindow in this.windows ) {
+			if ( window.id == id ) {
+				return window;
+			}
+		}
+		
+		return null;
+		
+	}
+	
+	/**
+	 * Align window to center of parent
+	 * @param	event
+	 */
+	private function onWindowAddedToStage ( event : Event ) : void {
+		var windowDO : DisplayObject = event.target as DisplayObject;
+		windowDO.removeEventListener( Event.ADDED_TO_STAGE, this.onWindowAddedToStage );
+		
+		var initialPosition  : Point;
+		
+		// if window has custom position - use it
+		if ( initialPosition = ( windowDO as NativeWindow ).getInitialPosition() ) {
+			
+			windowDO.x = initialPosition.x;
+			windowDO.y = initialPosition.y;
+			
+		// or center it by it's parent
+		} else {
+			
+			if ( windowDO.parent == windowDO.root ) {
+				var stage : Stage = windowDO.stage as Stage;
+				windowDO.x = Math.max( 0, ( stage.stageWidth - windowDO.width ) * 0.5 );
+				windowDO.y = Math.max( 0, ( stage.stageHeight - windowDO.height ) * 0.5 );
+			} else {
+				var parentBounds : Rectangle = windowDO.parent.getBounds( this.defaultParent );
+				
+				var parentGlobalPoint : Point = windowDO.parent.localToGlobal( new Point( windowDO.parent.x, windowDO.parent.y ) );
+				
+				var stageRect : Rectangle = new Rectangle( 0, 0, this.defaultParent.stage.stageWidth, this.defaultParent.stage.stageHeight );
+				
+				var minX 	: Number = parentGlobalPoint.x;
+				var minY	: Number = parentGlobalPoint.y;
+				var maxX	: Number = minX + stageRect.width - windowDO.width;
+				var maxY	: Number = minY + stageRect.height - windowDO.height;
+				windowDO.x = MathUtil.normalize( ( parentBounds.width - windowDO.width ) * 0.5, minX, maxX ); // Math.max( 0, Math.min( windowDO.parent.width, stageRect.width ) - windowDO.width ) * 0.5 - parentBounds.left;
+				windowDO.y = MathUtil.normalize( ( parentBounds.height - windowDO.height ) * 0.5, minY, maxY ); // Math.max( 0, Math.min( windowDO.parent.height, stageRect.height ) - windowDO.height ) * 0.5 - parentBounds.top;
+			}
+		}
+		
+		setTimeout( ( windowDO as NativeWindow ).postInitialize, 1 );
+		
+	}
+	
+}
+	
+}
