@@ -212,6 +212,12 @@ class Item {
 
         foreach ($data->itemsToGetIds as $i2aId)
             mysql_query("UPDATE items_to_avatars SET avatar_id=$myId WHERE id=$i2aId;");
+		
+		$socialCapital = new SocialCapital();
+		
+		$socialCapital->logInteraction($myId, $partnerId, "trade");
+		$socialCapital->logInteraction($partnerId, $myId, "trade");
+		
     }
 	
 	function hasItemCondition ( $avatarId, $itemId ) {

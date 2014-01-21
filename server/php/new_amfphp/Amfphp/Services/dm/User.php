@@ -323,7 +323,19 @@ class User {
 			}
 		}
     }
-
+	
+	function getUserAvatars ( $userId ) {
+		$stm = $this->con->prepare("SELECT avatars.* FROM users LEFT JOIN avatars ON ( avatars.user_id = users.id ) WHERE user.id = ?");
+		$stm->execute(array($userId));
+		return $stm->fetchAll(PDO::FETCH_OBJ);
+	}
+	
+	function getAllUsers () {
+		$stm = $this->con->prepare("SELECT users.*, schools.label AS school_label FROM users LEFT JOIN schools ON ( users.school_id = schools.id )");
+		$stm->execute();
+		return $stm->fetchAll(PDO::FETCH_OBJ);
+	}
+	
     /* */
 }
 
